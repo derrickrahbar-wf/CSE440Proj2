@@ -1,0 +1,6 @@
+this
+integer
+real
+boolean
+class
+

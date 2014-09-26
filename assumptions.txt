@@ -1,0 +1,2 @@
+1) If a class extends another class, the class being extended does not have to be defined yet (i.e. if A extends B, B can be defined after A).
+2) A field of a class cannot have the same name as the class it is declared in
