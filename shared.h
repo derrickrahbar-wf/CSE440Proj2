@@ -392,6 +392,8 @@ struct class_extend_t {
 struct class_block_t{
   struct variable_declaration_list_t *vdl; /* == variable_declaration_part */
   struct func_declaration_list_t *fdl;
+  struct statement_table_t *statement_hash_table; /* Circular? */
+  struct attribute_table_t *attribute_hash_table;
 };
 
 struct class_list_t;
@@ -404,6 +406,7 @@ struct class_list_t {
 struct program_t {
   struct program_heading_t *ph;
   struct class_list_t *cl;
+  struct class_table_t *class_hash_table;
 };
 
 
