@@ -239,6 +239,38 @@ void error_variable_name_invalid(int line_number, char *v)
   error(line_number, e);
 }
 
+/* ----------------------------------------------------------------------- 
+ * Outputs an error message if the function name f is invalid
+ * ----------------------------------------------------------------------- 
+ */
+void error_function_name_invalid(int line_number, char *f)
+{
+  char *e;
+
+  e = (char *) malloc(MAX_ERROR_SIZE);
+  CHECK_MEM_ERROR(e)
+
+  error_check_not_null(&f);
+  sprintf(e, "Invalid function name \"%s\"", f);
+  error(line_number, e);
+}
+
+/* ----------------------------------------------------------------------- 
+ * Outputs an error message if the class name c is invalid
+ * ----------------------------------------------------------------------- 
+ */
+void error_class_name_invalid(int line_number, char *c)
+{
+  char *e;
+
+  e = (char *) malloc(MAX_ERROR_SIZE);
+  CHECK_MEM_ERROR(e)
+
+  error_check_not_null(&c);
+  sprintf(e, "Invalid class name \"%s\"", c);
+  error(line_number, e);
+}
+
 
 
 /* ----------------------------------------------------------------------- 

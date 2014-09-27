@@ -8,14 +8,14 @@
 #ifndef SYMTAB_H
 #define SYMTAB_H
 
-#define SCOPE_FV = 0
-#define SCOPE_NFV = 1
+#define SCOPE_FV 0
+#define SCOPE_NFV 1
 
-#define ASSIGNMENT_STATEMENT = 0
-#define STATEMENT_SEQUENCE = 1
-#define IF_STATEMENT = 2
-#define WHILE_STATEMENT = 3
-#define PRINT_STATEMENT = 4
+#define ASSIGNMENT_STATEMENT 0
+#define STATEMENT_SEQUENCE 1
+#define IF_STATEMENT 2
+#define WHILE_STATEMENT 3
+#define PRINT_STATEMENT 4
 
 #include "shared.h"
 #include "usrdef.h"
@@ -42,7 +42,7 @@ struct attribute_key_t{
 struct attribute_table_t{
     struct type_denoter_t *type;
     int line_number;
-    int is_function;
+    int is_func;
     char *id; /* id, scope and function are used for the key */
     int scope;
     struct function_declaration_t *function;

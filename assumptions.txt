@@ -1,7 +1,8 @@
 1) If a class extends another class, the class being extended does not have to be defined yet (i.e. if A extends B, B can be defined after A).
 2) A field of a class cannot have the same name as the class it is declared in
 3) We do not allow function overloading
-
+4) We do not stop semantic analysis after a single error. The error is thrown but semantic analysis continues.
+5) No functions, classes or variables cannot be named a reserve word (i.e. you cannot have a class named integer)
 
 REMINDERS:
 1) If a type denoter is a primitive (TYPE_DENOTER_T_IDENTIFIER) its "name" will correspond to integer, boolean or real and its data will be null
