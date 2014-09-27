@@ -722,3 +722,138 @@ struct while_statement_t *set_while_statement(struct expression_t *e, struct sta
     return ws;
 }
 
+/* Helper method implemenatations (Hello again Dr. Bazzi) */
+struct attribute_table_t* create_attribute_hash_table(struct func_declaration_list_t *func_dec_list, struct variable_declaration_list_t *var_dec_list)
+{
+    struct attribute_table_t *attr_hash_table = NULL;
+
+    /* dummy function dec to use in the key of NFV nodes */
+    struct function_declaration_t *NFV_dummy_func_dec = (struct function_declaration_t*)(malloc(sizeof(NFV_dummy_func_dec)));
+    
+    add_var_dec_list_to_aht(var_dec_list, attr_hash_table, SCOPE_NFV, NFV_dummy_func_dec);
+    add_func_list_to_aht(function_declaration_list_t, attr_hash_table, NFV_dummy_func_dec);
+    add_func_var_dec_list_to_aht(var_dec_list, attr_hash_table, SCOPE_FV);
+    add_func_params_to_aht(func_dec_list, attr_hash_table, SCOPE_FV);
+
+    return attribute_table_t;
+}
+
+void add_var_dec_list_to_aht(struct variable_declaration_list_t *var_dec_list, struct attribute_table_t *attr_hash_table, int type)
+{
+    while(var_dec_list != NULL)
+    {
+        parse_var_dec(var_dec_list->vd, attr_hash_table);
+        var_dec_list = var_dec_list->next;
+    }
+}
+
+void parse_var_dec(struct variable_declaration_t *var_dec, struct attribute_table_t *attr_hash_table)
+{
+
+}
+
+void add_func_list_to_aht(struct func_declaration_list_t *func_dec_list, struct attribute_table_t *attr_hash_table, struct function_declaration_t *dummy_func_dec)
+{
+    while(func_dec_list != NULL)
+    {
+        struct type_denoter_t *type = generate_type_denoter(func_dec_list->fd->fh->res);
+        
+        struct attribute_table_t *func = create_attribute_node(func_dec_list->fd->fh->id,
+                                                               type,
+                                                               func_dec_list->fd->line_number,
+                                                               SCOPE_NFV,
+                                                               TRUE,
+                                                               func_dec_list->fd->fh->fpsl,
+                                                               dummy_func_dec);
+
+        
+        struct attribute_key_t *key = create_attribute_key(func_dec_list->fd->fh->id, SCOPE_NFV, dummy_func_dec);
+        
+        add_attribute_to_hash_table(key, func, attr_hash_table);
+        
+        func_dec_list = func_dec_list->next;
+    }
+}
+
+struct type_denoter_t* generate_type_denoter(char* return_type)
+{
+    struct type_denoter_t *type = (struct type_denoter_t*)malloc(sizeof(struct type_denoter_t));
+    if( !(strcmp(return_type, "integer") || strcmp(return_type, "real") || strcmp(return_type, "boolean")) )
+    {
+        type->type = TYPE_DENOTER_T_IDENTIFIER;
+    }
+    else
+    {
+        type->type = -1;
+    }
+    type->name = (char*)malloc(sizeof(strlen(return_type)));
+    strcpy(type->name, return_type);
+    return type;
+}
+
+void add_attribute_to_hash_table(struct attribute_key_t *key, struct attribute_table_t *attr, struct attribute_table_t *attr_hash_table)
+{
+    unsigned keylen = offsetof(attribute_table_t, function)            /* offset of last key field  */
+                      + sizeof(key->function)                          /* size of last key field    */
+                      - offsetof(attribute_table_t, id);               /* offset of first key field */
+    
+    struct attribute_table_t *item_ptr;
+
+        
+    HASH_FIND(hh, attr_hash_table, key, keylen, item_ptr);
+    if(item_ptr == NULL)
+    {
+        HASH_ADD(hh, attr_hash_table, id, keylen, attr);
+    }
+    else
+    {
+        attribute_hash_table_error(item_ptr, attr);
+    }
+}
+
+void attribute_hash_table_error(struct attribute_table_t *item_ptr, struct attribute_table_t *failed_attr)
+{
+    if(item_ptr->is_func)
+    {
+        error_function_already_declared(failed_attr->line_number, failed_attr->id, item_ptr->line_number);
+    }
+    else
+    {
+        error_variable_already_declared(failed_attr->line_number, failed_attr->id, item_ptr->line_number);   
+    }
+}
+
+struct attribute_key_t* create_attribute_key(char *id, int scope, struct function_declaration_t *function)
+{
+    struct attribute_key_t *key = (struct attribute_key_t*)malloc(sizeof(struct attribute_key_t));
+    
+    key->id = (char*)malloc(sizeof(strlen(id)));
+    strcpy(key->id, id);
+    key->scope = scope;
+    key->function = function;
+
+    return key;
+}
+
+struct attribute_table_t* create_attribute_node(char* id,
+                                                struct type_denoter_t *type,
+                                                int line_number, 
+                                                int scope, 
+                                                int is_func, 
+                                                struct formal_parameter_section_list_t *params, 
+                                                struct function_declaration_t *function)
+{
+        struct attribute_table_t *func = (struct attribute_table_t*)malloc(sizeof(*func));
+        
+        func->id = (char*)malloc(sizeof(strlen(id)));
+        strcpy(func->id, id);
+
+        func->type = type;
+        func->line_number = line_number;
+        func->scope = scope;
+        func->is_func = is_func;
+        func->params = params;
+        func->function = function;
+
+        return func;
+}

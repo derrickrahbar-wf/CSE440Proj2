@@ -25,6 +25,8 @@
 #define BOOLEAN_VALUE_TRUE "True"
 #define BOOLEAN_VALUE_FALSE "False"
 
+#define TRUE = 1
+#define FALSE = 0
 
 /* Macro that checks for a malloc error */
 #define CHECK_MEM_ERROR(name) {if (name == NULL) { \
@@ -480,6 +482,17 @@ struct variable_access_t *set_variable_access_method_designator(struct method_de
 struct variable_declaration_t *set_variable_declaration(struct identifier_list_t *il, struct type_denoter_t *tden, int line_number);
 struct variable_declaration_list_t *set_variable_declaration_list(struct variable_declaration_t *vd, struct variable_declaration_list_t *next);
 struct while_statement_t *set_while_statement(struct expression_t *e, struct statement_t *s);
+
+/* Helper Functions (Hi Dr. Bazzi) */
+struct class_table_t* create_class_hash_table(struct class_list_t *class_list);
+struct statement_table_t* create_statement_hash_table(struct func_declaration_list_t *func_dec_list);
+struct attribute_table_t* create_attribute_hash_table(struct func_declaration_list_t *func_dec_list, struct variable_declaration_list_t *var_dec_list);
+void add_var_dec_list_to_aht(struct variable_declaration_list_t *var_dec_list, struct attribute_table_t *attr_hash_table);
+void add_func_var_dec_list_to_aht(struct variable_declaration_list_t *var_dec_list, struct attribute_table_t *attr_hash_table);
+void add_func_params_to_aht(struct func_declaration_list_t *func_dec_list, struct attribute_table_t *attr_hash_table);
+
+
+
 
 
 #endif
