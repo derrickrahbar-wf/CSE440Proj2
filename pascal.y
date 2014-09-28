@@ -188,12 +188,13 @@ class_block:
  func_declaration_list
 	{
         $$ = set_class_block($1, $2);
+        printf("finished class_block method (should have attr table)\n");
 	}
  ;
 
 type_denoter : array_type
 	{       
-        $$ = set_type_denoter_array(NULL, $1);
+        $$ = set_type_denoter_array("array", $1);
 	}
  | identifier
 	{
@@ -648,7 +649,7 @@ relop : EQUAL
 
 identifier : IDENTIFIER
 	{
-        $$ = (char *)malloc(strlen(yytext));
+        $$ = (char *)malloc(strlen(yytext)*sizeof(char));
         strcpy($$,yytext);
 	}
  ;

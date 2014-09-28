@@ -9,7 +9,16 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "symtab.h"
+#include "./uthash/src/uthash.h"
+
+#define SCOPE_FV 0
+#define SCOPE_NFV 1
+
+#define ASSIGNMENT_STATEMENT 0
+#define STATEMENT_SEQUENCE 1
+#define IF_STATEMENT 2
+#define WHILE_STATEMENT 3
+#define PRINT_STATEMENT 4
 
 #define K 1024
 #define MAX_ERROR_SIZE 1 * K
@@ -488,22 +497,77 @@ struct variable_declaration_t *set_variable_declaration(struct identifier_list_t
 struct variable_declaration_list_t *set_variable_declaration_list(struct variable_declaration_t *vd, struct variable_declaration_list_t *next);
 struct while_statement_t *set_while_statement(struct expression_t *e, struct statement_t *s);
 
+
+
+
+
+
+
+struct attribute_key_t{
+    char *id;
+    int scope;
+    struct function_declaration_t *function;
+};
+
+struct attribute_table_t{
+    struct type_denoter_t *type;
+    int line_number;
+    int is_func;
+    char *id; /* id, scope and function are used for the key */
+    int scope;
+    struct function_declaration_t *function;
+    struct formal_parameter_section_list_t *params;
+    UT_hash_handle hh; /* defines structure as a hashable object */
+};
+
+struct statement_table_t{
+    int type;
+    int line_number;
+    struct function_declaration_t *function;
+    
+    union{
+        struct assignment_statement_t *as;
+        struct statement_sequence_t *ss;
+        struct if_statement_t *is;
+        struct while_statement_t *ws;
+        struct print_statement_t *ps;
+  }statement_data;
+
+  UT_hash_handle hh; /* defines structure as a hashable object */
+};
+
+struct class_table_t {
+    struct attribute_table_t *attribute_hash_table;
+    struct class_table_t *extend;
+    int line_number;
+    char *id;
+    struct statement_table_t *statement_hash_table;
+    UT_hash_handle hh; /* defines structure as a hashable object */
+};
+
+
+
+
+
+
+
+
+
 /* Helper Functions (Hi Dr. Bazzi) */
-struct attribute_table_t* create_attribute_hash_table(struct func_declaration_list_t *func_dec_list, struct variable_declaration_list_t *var_dec_list);
-void add_class_funcs_to_aht(struct func_declaration_list_t *func_dec_list, struct attribute_table_t *attr_hash_table, struct function_declaration_t *dummy_func_dec);
+void create_attribute_hash_table(struct func_declaration_list_t *func_dec_list, struct variable_declaration_list_t *var_dec_list);
+void add_class_funcs_to_aht(struct func_declaration_list_t *func_dec_list, struct function_declaration_t *dummy_func_dec);
 struct type_denoter_t* generate_type_denoter(char* return_type);
-void add_attribute_to_hash_table(struct attribute_key_t *key, struct attribute_table_t *attr, struct attribute_table_t *attr_hash_table, int entity_type);
+void add_attribute_to_hash_table(struct attribute_key_t *key, struct attribute_table_t *attr, int entity_type);
 void attribute_hash_table_error(struct attribute_table_t *item_ptr, struct attribute_table_t *failed_attr);
 struct attribute_key_t* create_attribute_key(char *id, int scope, struct function_declaration_t *function);
-void add_class_attrs_to_aht(struct variable_declaration_list_t *var_dec_list, struct attribute_table_t *attr_hash_table, int type, struct function_declaration_t *dummy_func_dec);
-void parse_var_dec(struct variable_declaration_t *var_dec, struct attribute_table_t *attr_hash_table, int scope, struct function_declaration_t *func);
-void parse_param_section(struct formal_parameter_section_t *param_section, struct attribute_table_t *attr_hash_table, int scope, struct function_declaration_t *func);
-void add_func_var_to_aht(struct variable_declaration_list_t *var_dec_list, struct attribute_table_t *attr_hash_table, int scope, struct function_declaration_t *func);
+void add_class_attrs_to_aht(struct variable_declaration_list_t *var_dec_list, int type, struct function_declaration_t *dummy_func_dec);
+void parse_var_dec(struct variable_declaration_t *var_dec, int scope, struct function_declaration_t *func);
+void parse_param_section(struct formal_parameter_section_t *param_section, int scope, struct function_declaration_t *func);
+void add_func_var_to_aht(struct variable_declaration_list_t *var_dec_list, int scope, struct function_declaration_t *func);
 
 void check_against_reserved_words(char* id, int line_number, int entity_type);
 struct class_table_t* create_class_hash_table(struct class_list_t *class_list);
 struct statement_table_t* create_statement_hash_table(struct func_declaration_list_t *func_dec_list);
-struct attribute_table_t* create_attribute_hash_table(struct func_declaration_list_t *func_dec_list, struct variable_declaration_list_t *var_dec_list);
 struct attribute_table_t* create_attribute_node(char* id,
                                                 struct type_denoter_t *type,
                                                 int line_number, 
@@ -514,9 +578,9 @@ struct attribute_table_t* create_attribute_node(char* id,
 
 
 
-void add_func_var_dec_list_to_aht(struct variable_declaration_list_t *var_dec_list, struct attribute_table_t *attr_hash_table);
-void add_func_params_to_aht(struct formal_parameter_section_list_t *param_list, struct attribute_table_t *attr_hash_table, int scope, struct function_declaration_t *func);
-
+void add_func_var_dec_list_to_aht(struct variable_declaration_list_t *var_dec_list);
+void add_func_params_to_aht(struct formal_parameter_section_list_t *param_list, int scope, struct function_declaration_t *func);
+void print_hash_table();
 
 
 

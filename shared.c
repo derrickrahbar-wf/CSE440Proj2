@@ -5,7 +5,10 @@
 
 #include "shared.h"
 #include "rulefuncs.h"
+#include <string.h>
 
+/* Global head to the attribute hash table */
+struct attribute_table_t *attr_hash_table = NULL;
 
 /* ----------------------------------------------------------------------- 
  * Returns a hashkey value for the given lexeme
@@ -166,6 +169,12 @@ struct class_block_t *set_class_block(struct variable_declaration_list_t *vdl, s
     struct class_block_t *cb = new_class_block();
     cb->vdl = vdl;
     cb->fdl = fdl;
+    create_attribute_hash_table(fdl, vdl);
+    cb->attribute_hash_table = attr_hash_table;
+    
+    /* FOR DEBUGGING */
+    print_hash_table(cb->attribute_hash_table);
+
 
     return cb;
 }
@@ -261,7 +270,7 @@ struct formal_parameter_section_t *set_formal_parameter_section(struct identifie
 {
     struct formal_parameter_section_t *fps = new_formal_parameter_section();
     fps->il = il;
-    fps->id = (char *)malloc(strlen(id));
+    fps->id = (char *)malloc(strlen(id)*sizeof(char));
     strcpy(fps->id, id);
     fps->is_var = is_var;
 
@@ -318,7 +327,7 @@ struct function_designator_t *set_function_designator(char * id, struct actual_p
 struct function_heading_t *set_function_heading(char *id, char *res, struct formal_parameter_section_list_t *fpsl)
 {
     struct function_heading_t *fh = new_function_heading();
-    fh->id = (char *)malloc(strlen(id));
+    fh->id = (char*)malloc(strlen(id));
     strcpy(fh->id, id);
     fh->res = res;
     fh->fpsl = fpsl;
@@ -728,29 +737,25 @@ struct while_statement_t *set_while_statement(struct expression_t *e, struct sta
 ////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////
 
-struct attribute_table_t* create_attribute_hash_table(struct func_declaration_list_t *func_dec_list, struct variable_declaration_list_t *var_dec_list)
+void create_attribute_hash_table(struct func_declaration_list_t *func_dec_list, struct variable_declaration_list_t *var_dec_list)
 {
-    struct attribute_table_t *attr_hash_table = NULL;
-
     /* dummy function dec to use in the key of NFV nodes */
     struct function_declaration_t *NFV_dummy_func_dec = (struct function_declaration_t*)(malloc(sizeof(NFV_dummy_func_dec)));
     
-    add_class_attrs_to_aht(var_dec_list, attr_hash_table, SCOPE_NFV, NFV_dummy_func_dec);
-    add_class_funcs_to_aht(func_dec_list, attr_hash_table, NFV_dummy_func_dec);
-
-    return attr_hash_table;
+    add_class_attrs_to_aht(var_dec_list, SCOPE_NFV, NFV_dummy_func_dec);
+    add_class_funcs_to_aht(func_dec_list, NFV_dummy_func_dec);
 }
 
-void add_class_attrs_to_aht(struct variable_declaration_list_t *var_dec_list, struct attribute_table_t *attr_hash_table, int type, struct function_declaration_t *dummy_func_dec)
+void add_class_attrs_to_aht(struct variable_declaration_list_t *var_dec_list, int type, struct function_declaration_t *dummy_func_dec)
 {
     while(var_dec_list != NULL)
     {
-        parse_var_dec(var_dec_list->vd, attr_hash_table, SCOPE_NFV, dummy_func_dec);
+        parse_var_dec(var_dec_list->vd, SCOPE_NFV, dummy_func_dec);
         var_dec_list = var_dec_list->next;
     }
 }
 
-void parse_param_section(struct formal_parameter_section_t *param_section, struct attribute_table_t *attr_hash_table, int scope, struct function_declaration_t *func)
+void parse_param_section(struct formal_parameter_section_t *param_section, int scope, struct function_declaration_t *func)
 {
     struct identifier_list_t *id_list = param_section->il;
     while(id_list != NULL)
@@ -764,13 +769,13 @@ void parse_param_section(struct formal_parameter_section_t *param_section, struc
                                                               NULL,
                                                               func);
         struct attribute_key_t *key = create_attribute_key(id_list->id, scope, func);
-        add_attribute_to_hash_table(key, var, attr_hash_table, ENTITY_VARIABLE);
+        add_attribute_to_hash_table(key, var, ENTITY_VARIABLE);
 
         id_list = id_list->next;
     }
 }
 
-void parse_var_dec(struct variable_declaration_t *var_dec, struct attribute_table_t *attr_hash_table, int scope, struct function_declaration_t *func)
+void parse_var_dec(struct variable_declaration_t *var_dec, int scope, struct function_declaration_t *func)
 {
     struct identifier_list_t *id_list = var_dec->il;
     while(id_list != NULL)
@@ -783,18 +788,18 @@ void parse_var_dec(struct variable_declaration_t *var_dec, struct attribute_tabl
                                                               NULL,
                                                               func);
         struct attribute_key_t *key = create_attribute_key(id_list->id, scope, func);
-        add_attribute_to_hash_table(key, var, attr_hash_table, ENTITY_VARIABLE);
+        add_attribute_to_hash_table(key, var, ENTITY_VARIABLE);
 
         id_list = id_list->next;
     }
 }
 
-void add_class_funcs_to_aht(struct func_declaration_list_t *func_dec_list, struct attribute_table_t *attr_hash_table, struct function_declaration_t *dummy_func_dec)
+void add_class_funcs_to_aht(struct func_declaration_list_t *func_dec_list, struct function_declaration_t *dummy_func_dec)
 {
     while(func_dec_list != NULL)
     {
         struct type_denoter_t *type = generate_type_denoter(func_dec_list->fd->fh->res);
-        
+
         struct attribute_table_t *func = create_attribute_node(func_dec_list->fd->fh->id,
                                                                type,
                                                                func_dec_list->fd->line_number,
@@ -803,34 +808,33 @@ void add_class_funcs_to_aht(struct func_declaration_list_t *func_dec_list, struc
                                                                func_dec_list->fd->fh->fpsl,
                                                                dummy_func_dec);
 
+        struct attribute_key_t *key = create_attribute_key(func->id, SCOPE_NFV, dummy_func_dec);
         
-        struct attribute_key_t *key = create_attribute_key(func_dec_list->fd->fh->id, SCOPE_NFV, dummy_func_dec);
-        
-        add_attribute_to_hash_table(key, func, attr_hash_table, ENTITY_FUNCTION);
+        add_attribute_to_hash_table(key, func, ENTITY_FUNCTION);
 
-        add_func_var_to_aht(func_dec_list->fd->fb->vdl, attr_hash_table, SCOPE_FV, func_dec_list->fd);
-        add_func_params_to_aht(func_dec_list->fd->fh->fpsl, attr_hash_table, SCOPE_FV, func_dec_list->fd);
+        add_func_var_to_aht(func_dec_list->fd->fb->vdl, SCOPE_FV, func_dec_list->fd);
+        add_func_params_to_aht(func_dec_list->fd->fh->fpsl, SCOPE_FV, func_dec_list->fd);
         
         func_dec_list = func_dec_list->next;
     }
 }
 
-void add_func_params_to_aht(struct formal_parameter_section_list_t *param_list, struct attribute_table_t *attr_hash_table, int scope, struct function_declaration_t *func)
+void add_func_params_to_aht(struct formal_parameter_section_list_t *param_list, int scope, struct function_declaration_t *func)
 {
     while(param_list != NULL)
     {
-        parse_param_section(param_list->fps, attr_hash_table, scope, func);
+        parse_param_section(param_list->fps, scope, func);
         
         param_list = param_list->next;
     }
 }
 
 
-void add_func_var_to_aht(struct variable_declaration_list_t *var_dec_list, struct attribute_table_t *attr_hash_table, int scope, struct function_declaration_t *func)
+void add_func_var_to_aht(struct variable_declaration_list_t *var_dec_list, int scope, struct function_declaration_t *func)
 {
     while(var_dec_list != NULL)
     {
-        parse_var_dec(var_dec_list->vd, attr_hash_table, scope, func);
+        parse_var_dec(var_dec_list->vd, scope, func);
         var_dec_list = var_dec_list->next;
     }
 }
@@ -846,26 +850,33 @@ struct type_denoter_t* generate_type_denoter(char* return_type)
     {
         type->type = -1;
     }
-    type->name = (char*)malloc(sizeof(strlen(return_type)));
+    type->name = (char*)malloc(strlen(return_type)*sizeof(char));
     strcpy(type->name, return_type);
     return type;
 }
 
 
-void add_attribute_to_hash_table(struct attribute_key_t *key, struct attribute_table_t *attr, struct attribute_table_t *attr_hash_table, int entity_type)
+void add_attribute_to_hash_table(struct attribute_key_t *key, struct attribute_table_t *attr, int entity_type)
 {
     check_against_reserved_words(key->id, attr->line_number, entity_type);
     unsigned keylen = offsetof(struct attribute_table_t, function)            /* offset of last key field  */
                       + sizeof(key->function)                          /* size of last key field    */
                       - offsetof(struct attribute_table_t, id);               /* offset of first key field */
     
-    struct attribute_table_t *item_ptr;
+    struct attribute_table_t *item_ptr = NULL;
+    /* DEBUGGING */
 
-        
+    printf("\n\nKEYLEN: %u\n", keylen);
     HASH_FIND(hh, attr_hash_table, key, keylen, item_ptr);
     if(item_ptr == NULL)
     {
         HASH_ADD(hh, attr_hash_table, id, keylen, attr);
+        /* DEBUGGING */
+        HASH_FIND(hh, attr_hash_table, &key->id, keylen, item_ptr);
+        if(item_ptr != NULL)
+        {
+            printf("\n\nfound attribute for %s", key->id);
+        }
     }
     else
     {
@@ -907,10 +918,10 @@ void attribute_hash_table_error(struct attribute_table_t *item_ptr, struct attri
 
 struct attribute_key_t* create_attribute_key(char *id, int scope, struct function_declaration_t *function)
 {
-    struct attribute_key_t *key = (struct attribute_key_t*)malloc(sizeof(struct attribute_key_t));
-    
-    key->id = (char*)malloc(sizeof(strlen(id)));
-    strcpy(key->id, id);
+    struct attribute_key_t *key = (struct attribute_key_t*)malloc(sizeof(struct attribute_key_t) + sizeof(*id));
+    memset(key, 0, sizeof(*key) + sizeof(*id));
+    memcpy(key->id, id, sizeof(*id));
+
     key->scope = scope;
     key->function = function;
 
@@ -925,10 +936,9 @@ struct attribute_table_t* create_attribute_node(char* id,
                                                 struct formal_parameter_section_list_t *params, 
                                                 struct function_declaration_t *function)
 {
-        struct attribute_table_t *func = (struct attribute_table_t*)malloc(sizeof(*func));
-        
-        func->id = (char*)malloc(sizeof(strlen(id)));
-        strcpy(func->id, id);
+        struct attribute_table_t *func = (struct attribute_table_t*)malloc(sizeof(struct attribute_table_t) + sizeof(*id));
+        memset(func, 0, sizeof(struct attribute_table_t) + sizeof(*id));
+        memcpy(func->id, id, sizeof(*id));
 
         func->type = type;
         func->line_number = line_number;
@@ -939,3 +949,38 @@ struct attribute_table_t* create_attribute_node(char* id,
 
         return func;
 }
+
+void print_hash_table()
+{
+    struct attribute_table_t *t;
+                   
+    for(t=attr_hash_table; t != NULL; t=t->hh.next) 
+    {
+        
+
+        printf("TYPE: %s: LINE NUMBER %d SCOPE: %d IS FUNCTION: %d ID: %s ", t->type->name, t->line_number, t->scope, t->is_func, t->id);
+        if(t->function->fh != NULL)
+        {
+            printf("FUNCTION NAME: %s ", t->function->fh->id);
+        }
+        if(t->params != NULL)
+        {
+            printf(" PARAMETERS: ");
+            struct formal_parameter_section_list_t *p;
+            for(p=t->params; p != NULL; p=p->next)
+            {
+                struct identifier_list_t *il;
+                for(il=p->fps->il; il != NULL; il=il->next)
+                {
+                    printf("%s, ", il->id);
+                }
+                printf(" TYPE: %s ", p->fps->id);
+            }
+            
+        }
+        printf("\n\n");
+    }
+}
+
+
+

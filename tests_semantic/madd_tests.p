@@ -1,14 +1,20 @@
 program test;
 
-class testing extends baby
-begin
-end
+class testFunctionCallArgArray
 
-class baby 
-begin 
-end
+BEGIN
+   
+   VAR
+      dummyArray : ARRAY[0..9] OF integer;
+      retval	 : integer;
+      retval	 : real;
 
-class testing 
-begin
-end
+FUNCTION setCompilerWorks(value	: integer ): integer;
+BEGIN
+   PRINT value[6]
+END   
+  
+
+END
 .
+
