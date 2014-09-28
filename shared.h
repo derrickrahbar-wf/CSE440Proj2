@@ -503,21 +503,23 @@ struct while_statement_t *set_while_statement(struct expression_t *e, struct sta
 
 
 
-struct attribute_key_t{
-    char *id;
-    int scope;
-    struct function_declaration_t *function;
-};
+// struct attribute_key_t{
+//     int scope;
+//     struct function_declaration_t *function;
+//     char *id;
+// };
 
 struct attribute_table_t{
     struct type_denoter_t *type;
     int line_number;
     int is_func;
-    char *id; /* id, scope and function are used for the key */
-    int scope;
-    struct function_declaration_t *function;
     struct formal_parameter_section_list_t *params;
     UT_hash_handle hh; /* defines structure as a hashable object */
+    int scope;
+    struct function_declaration_t *function;
+    char id[30];
+    int id_length;
+    char string_key[61];  
 };
 
 struct statement_table_t{
@@ -540,9 +542,9 @@ struct class_table_t {
     struct attribute_table_t *attribute_hash_table;
     struct class_table_t *extend;
     int line_number;
-    char *id;
     struct statement_table_t *statement_hash_table;
     UT_hash_handle hh; /* defines structure as a hashable object */
+    char *id;
 };
 
 
@@ -557,7 +559,7 @@ struct class_table_t {
 void create_attribute_hash_table(struct func_declaration_list_t *func_dec_list, struct variable_declaration_list_t *var_dec_list);
 void add_class_funcs_to_aht(struct func_declaration_list_t *func_dec_list, struct function_declaration_t *dummy_func_dec);
 struct type_denoter_t* generate_type_denoter(char* return_type);
-void add_attribute_to_hash_table(struct attribute_key_t *key, struct attribute_table_t *attr, int entity_type);
+void add_attribute_to_hash_table(struct attribute_table_t *attr, int entity_type);
 void attribute_hash_table_error(struct attribute_table_t *item_ptr, struct attribute_table_t *failed_attr);
 struct attribute_key_t* create_attribute_key(char *id, int scope, struct function_declaration_t *function);
 void add_class_attrs_to_aht(struct variable_declaration_list_t *var_dec_list, int type, struct function_declaration_t *dummy_func_dec);
@@ -581,6 +583,7 @@ struct attribute_table_t* create_attribute_node(char* id,
 void add_func_var_dec_list_to_aht(struct variable_declaration_list_t *var_dec_list);
 void add_func_params_to_aht(struct formal_parameter_section_list_t *param_list, int scope, struct function_declaration_t *func);
 void print_hash_table();
+char* format_attr_id(char id[], int id_length);
 
 
 

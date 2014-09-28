@@ -1137,6 +1137,7 @@ void check_for_extend(struct class_list_t *class_list, struct class_identificati
             //this is the class that our class is extending
             class_name->extend->extend_class = class_list;
             printf("FOUND EXTENDING CLASS\n"); 
+            return;
         }
 
         class_list = class_list->next;

@@ -7,9 +7,10 @@ BEGIN
    VAR
       dummyArray : ARRAY[0..9] OF integer;
       retval	 : integer;
-      retval	 : real;
 
-FUNCTION setCompilerWorks(value	: integer ): integer;
+FUNCTION tester(value	: integer): integer;
+VAR
+    poop : integer;
 BEGIN
    PRINT value[6]
 END   
