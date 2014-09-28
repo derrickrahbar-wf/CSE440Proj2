@@ -474,7 +474,7 @@ struct primary_t *set_primary_t_variable_access(struct variable_access_t* va, st
 struct print_statement_t *set_print_statement(struct variable_access_t *va);
 struct program_t *set_program(struct program_heading_t *ph, struct class_list_t *cl);
 struct program_heading_t *set_program_heading(char *id, struct identifier_list_t *il);
-struct range_t *set_range(struct unsigned_number_t *min, struct unsigned_number_t *max);
+struct range_t *set_range(struct unsigned_number_t *min, struct unsigned_number_t *max, int line_number);
 int * set_sign(int sign);
 float simple_expression_relop(struct simple_expression_t *se1, int relop, struct simple_expression_t *se2);
 struct simple_expression_t *set_simple_expression(struct term_t *t, int addop, struct expression_data_t *expr, struct simple_expression_t *next);

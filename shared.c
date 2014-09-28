@@ -171,7 +171,6 @@ struct class_block_t *set_class_block(struct variable_declaration_list_t *vdl, s
     cb->fdl = fdl;
     create_attribute_hash_table(fdl, vdl);
     cb->attribute_hash_table = attr_hash_table;
-    
     /* FOR DEBUGGING */
     print_hash_table(cb->attribute_hash_table);
 
@@ -487,8 +486,12 @@ struct program_heading_t *set_program_heading(char *id, struct identifier_list_t
     return ph;   
 }
 
-struct range_t *set_range(struct unsigned_number_t *min, struct unsigned_number_t *max)
+struct range_t *set_range(struct unsigned_number_t *min, struct unsigned_number_t *max, int line_number)
 {
+    if(min->ui > max->ui)
+    {
+        error_array_range_invalid(line_number, min->ui, max->ui);
+    }
     struct range_t *r = new_range();
     r->min = min;
     r->max = max;
@@ -760,16 +763,23 @@ void parse_param_section(struct formal_parameter_section_t *param_section, int s
     struct identifier_list_t *id_list = param_section->il;
     while(id_list != NULL)
     {
-        struct type_denoter_t *type = generate_type_denoter(param_section->id);
-        struct attribute_table_t *var = create_attribute_node(id_list->id,
-                                                              type,
-                                                              func->line_number,
-                                                              scope,
-                                                              FALSE,
-                                                              NULL,
-                                                              func);
+        if(strcmp(id_list->id, func->fh->id) != 0)
+        {
+            struct type_denoter_t *type = generate_type_denoter(param_section->id);
+            struct attribute_table_t *var = create_attribute_node(id_list->id,
+                                                                  type,
+                                                                  func->line_number,
+                                                                  scope,
+                                                                  FALSE,
+                                                                  NULL,
+                                                                  func);
 
-        add_attribute_to_hash_table(var, ENTITY_VARIABLE);
+            add_attribute_to_hash_table(var, ENTITY_VARIABLE);
+        }
+        else
+        {
+            error_variable_name_invalid(func->line_number, id_list->id);
+        }
 
         id_list = id_list->next;
     }
@@ -780,15 +790,26 @@ void parse_var_dec(struct variable_declaration_t *var_dec, int scope, struct fun
     struct identifier_list_t *id_list = var_dec->il;
     while(id_list != NULL)
     {
-        struct attribute_table_t *var = create_attribute_node(id_list->id,
-                                                              var_dec->tden,
-                                                              var_dec->line_number,
-                                                              scope,
-                                                              FALSE,
-                                                              NULL,
-                                                              func);
-        add_attribute_to_hash_table(var, ENTITY_VARIABLE);
-
+        char *func_id = "";
+        if(func->fh != NULL)
+        {
+            func_id = func->fh->id;
+        }
+        if(strcmp(id_list->id, func_id) != 0)
+        {
+            struct attribute_table_t *var = create_attribute_node(id_list->id,
+                                                                  var_dec->tden,
+                                                                  var_dec->line_number,
+                                                                  scope,
+                                                                  FALSE,
+                                                                  NULL,
+                                                                  func);
+            add_attribute_to_hash_table(var, ENTITY_VARIABLE);
+        }
+        else
+        {
+            error_variable_name_invalid(var_dec->line_number, id_list->id);
+        }
         id_list = id_list->next;
     }
 }
@@ -798,7 +819,6 @@ void add_class_funcs_to_aht(struct func_declaration_list_t *func_dec_list, struc
     while(func_dec_list != NULL)
     {
         struct type_denoter_t *type = generate_type_denoter(func_dec_list->fd->fh->res);
-
         struct attribute_table_t *func = create_attribute_node(func_dec_list->fd->fh->id,
                                                                type,
                                                                func_dec_list->fd->line_number,
@@ -810,8 +830,9 @@ void add_class_funcs_to_aht(struct func_declaration_list_t *func_dec_list, struc
         add_attribute_to_hash_table(func, ENTITY_FUNCTION);
 
         add_func_var_to_aht(func_dec_list->fd->fb->vdl, SCOPE_FV, func_dec_list->fd);
-        add_func_params_to_aht(func_dec_list->fd->fh->fpsl, SCOPE_FV, func_dec_list->fd);
         
+        add_func_params_to_aht(func_dec_list->fd->fh->fpsl, SCOPE_FV, func_dec_list->fd);
+
         func_dec_list = func_dec_list->next;
     }
 }
@@ -847,6 +868,7 @@ struct type_denoter_t* generate_type_denoter(char* return_type)
     {
         type->type = -1;
     }
+
     type->name = (char*)malloc(strlen(return_type)*sizeof(char));
     strcpy(type->name, return_type);
     return type;
@@ -969,7 +991,7 @@ void print_hash_table()
     {
         
 
-        printf("TYPE: %s: LINE NUMBER %d SCOPE: %d IS FUNCTION: %d ID: %s ", t->type->name, t->line_number, t->scope, t->is_func, format_attr_id(t->id, t->id_length));
+        printf("TYPE: %s LINE NUMBER %d SCOPE: %d IS FUNCTION: %d ID: %s ", t->type->name, t->line_number, t->scope, t->is_func, format_attr_id(t->id, t->id_length));
         if(t->function->fh != NULL)
         {
             printf("FUNCTION NAME: %s ", t->function->fh->id);
