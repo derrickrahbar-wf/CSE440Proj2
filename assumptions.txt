@@ -6,6 +6,8 @@
 6) A variable cannot exceed 30 characters
 7) +/- factor must be a real or an integer
 8) If we find a mismatched type, we show error, but set the type to be the valid type in order to continue analysis to find more errors in order to give the user insight to all errors
+9) An index expression list cannot be longer than one index expression (in variable_access). For exmample, the following is not allowed: a[1,2,3]
+10) An actual param can only be an expression, not an expression:expression or expression:expression:expression (because we could not find anything in pascal to discern what that means).
 
 REMINDERS:
 1) If a type denoter is a primitive (TYPE_DENOTER_T_IDENTIFIER) its "name" will correspond to integer, boolean or real and its data will be null

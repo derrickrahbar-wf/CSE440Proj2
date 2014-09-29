@@ -411,7 +411,7 @@ variable_access : identifier
 	}
  | indexed_variable
 	{
-        $$ = set_variable_access_indexed_variable($1, NULL, $1->expr);
+        $$ = set_variable_access_indexed_variable($1, NULL, NULL);
 	}
  | attribute_designator
 	{
@@ -425,12 +425,13 @@ variable_access : identifier
 
 indexed_variable : variable_access LBRAC index_expression_list RBRAC
 	{
-        $$ = set_indexed_variable($1, $3, NULL);
+        $$ = set_indexed_variable($1, $3, line_number);
 	}
  ;
 
 index_expression_list : index_expression_list comma index_expression
 	{
+		/* We are assuming this will never run because we are not allowing expression lists greater than one expression */
         $$ = set_index_expression_list($3, $1, $3->expr);
 	}
  | index_expression
@@ -443,20 +444,20 @@ index_expression : expression ;
 
 attribute_designator : variable_access DOT identifier
 	{
-        $$ = set_attribute_designator($1, $3);
+        $$ = set_attribute_designator($1, $3, line_number);
 	}
 ;
 
 method_designator: variable_access DOT function_designator
 	{
-        $$ = set_method_designator($1, $3);
+        $$ = set_method_designator($1, $3, line_number);
 	}
  ;
 
 
 params : LPAREN actual_parameter_list RPAREN 
 	{
-        $$ = set_actual_parameter_list(NULL, $2);
+        $$ = $2;
 	}
  ;
 
@@ -472,6 +473,7 @@ actual_parameter_list : actual_parameter_list comma actual_parameter
 
 actual_parameter : expression
 	{
+		/* We assume only this case should execute because a param list should only have an expression */
         $$ = set_actual_parameter($1, NULL, NULL);
 	}
  | expression COLON expression

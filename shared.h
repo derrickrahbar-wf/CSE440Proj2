@@ -464,7 +464,7 @@ struct actual_parameter_t *set_actual_parameter(struct expression_t *e1, struct 
 struct actual_parameter_list_t *set_actual_parameter_list(struct actual_parameter_t *ap, struct actual_parameter_list_t *next);
 struct array_type_t *set_array_type(struct range_t *r, struct type_denoter_t *td);
 struct assignment_statement_t *set_assignment_statement(struct variable_access_t *va, struct expression_t *e, struct object_instantiation_t *oe);
-struct attribute_designator_t *set_attribute_designator(struct variable_access_t *va, char *id);
+struct attribute_designator_t *set_attribute_designator(struct variable_access_t *va, char *id, int line_number);
 void check_compatibility(char* type1, char* type2);
 struct class_block_t *set_class_block(struct variable_declaration_list_t *vdl, struct func_declaration_list_t *fdl);
 struct class_identification_t *set_class_identification(char *id, char *extend, int line_number);
@@ -484,8 +484,8 @@ struct function_heading_t *set_function_heading(char *id, char *res, struct form
 struct identifier_list_t *set_identifier_list(char *id, struct identifier_list_t* next);
 struct if_statement_t *set_if_statement(struct expression_t *e, struct statement_t *s1, struct statement_t *s2);
 struct index_expression_list_t *set_index_expression_list(struct expression_t *e, struct index_expression_list_t *next, struct expression_data_t *expr);
-struct indexed_variable_t *set_indexed_variable(struct variable_access_t *va, struct index_expression_list_t *iel, struct expression_data_t *expr);
-struct method_designator_t *set_method_designator(struct variable_access_t *va, struct function_designator_t *fd);
+struct indexed_variable_t *set_indexed_variable(struct variable_access_t *va, struct index_expression_list_t *iel, int line_number);
+struct method_designator_t *set_method_designator(struct variable_access_t *va, struct function_designator_t *fd, int line_number);
 struct object_instantiation_t *set_object_instantiation(char *id, struct actual_parameter_list_t *apl);
 struct primary_data_t* set_primary_data(struct primary_t *next);
 struct primary_t* set_primary_t_expression(struct expression_t *e);
@@ -604,12 +604,13 @@ struct attribute_table_t* create_attribute_node(char* id,
 
 void add_func_var_dec_list_to_aht(struct variable_declaration_list_t *var_dec_list);
 void add_func_params_to_aht(struct formal_parameter_section_list_t *param_list, int scope, struct function_declaration_t *func);
-void print_hash_table();
+void print_hash_table(struct attribute_table_t* attr);
 char* format_attr_id(char id[], int id_length);
 
 int is_real(char *id);
 int is_boolean(char *id);
 int is_integer(char *id);
+int is_array(char *id);
 
 
 

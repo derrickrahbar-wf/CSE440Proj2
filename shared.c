@@ -10,6 +10,7 @@
 /* Global head to the attribute hash table */
 struct attribute_table_t *attr_hash_table = NULL;
 
+
 /* ----------------------------------------------------------------------- 
  * Returns a hashkey value for the given lexeme
  * ----------------------------------------------------------------------- 
@@ -149,12 +150,20 @@ struct assignment_statement_t *set_assignment_statement(struct variable_access_t
     return as;
 }
 
-struct attribute_designator_t *set_attribute_designator(struct variable_access_t *va, char *id)
+struct attribute_designator_t *set_attribute_designator(struct variable_access_t *va, char *id, int line_number)
 {
     struct attribute_designator_t *ad = new_attribute_designator();
     ad->va = va;
-    ad->id = (char *)malloc(strlen(id));
+    ad->id = (char *)malloc(strlen(id)*sizeof(char));
     strcpy(ad->id, id);
+
+    if(va->expr != NULL)
+    {
+        if( is_integer(va->expr->type) || is_boolean(va->expr->type) || is_real(va->expr->type) )
+        {
+            error_datatype_is_not(line_number, va->expr->type, "object");
+        }
+    }
 
     return ad;
 }
@@ -171,6 +180,7 @@ struct class_block_t *set_class_block(struct variable_declaration_list_t *vdl, s
     cb->fdl = fdl;
     create_attribute_hash_table(fdl, vdl);
     cb->attribute_hash_table = attr_hash_table;
+    attr_hash_table = NULL; /*set global head back to null for next class*/
     /* FOR DEBUGGING */
     print_hash_table(cb->attribute_hash_table);
 
@@ -445,7 +455,7 @@ struct func_declaration_list_t *set_func_declaration_list(struct function_declar
 struct function_designator_t *set_function_designator(char * id, struct actual_parameter_list_t * apl)
 {
     struct function_designator_t *fd = new_function_designator();
-    fd->id = (char *)malloc(strlen(id));
+    fd->id = (char *)malloc(strlen(id)*sizeof(char));
     strcpy(fd->id, id);
     fd->apl = apl;
 
@@ -493,21 +503,44 @@ struct index_expression_list_t *set_index_expression_list(struct expression_t *e
     return iel;
 }
 
-struct indexed_variable_t *set_indexed_variable(struct variable_access_t *va, struct index_expression_list_t *iel, struct expression_data_t *expr)
+struct indexed_variable_t *set_indexed_variable(struct variable_access_t *va, struct index_expression_list_t *iel, int line_number)
 {
     struct indexed_variable_t *iv = new_indexed_variable();
     iv->va = va;
     iv->iel = iel;
-    iv->expr = expr;
+    
+    /* We are assuming the index expression list only has one element */
+    if(iel->expr != NULL)
+    {
+        if(!is_integer(iel->expr->type))
+        {
+            error_datatype_is_not(line_number, iel->expr->type, "integer");
+        }
+    }
 
+    if(va->expr != NULL)
+    {
+        if(!is_array(va->expr->type))
+        {
+            error_datatype_is_not(line_number, va->expr->type, "array");
+        }
+    }
     return iv;
 }
 
-struct method_designator_t *set_method_designator(struct variable_access_t *va, struct function_designator_t *fd)
+struct method_designator_t *set_method_designator(struct variable_access_t *va, struct function_designator_t *fd, int line_number)
 {
     struct method_designator_t *md = new_method_designator();
     md->va = va;
     md->fd = fd;
+
+    if(va->expr != NULL)
+    {
+        if( is_integer(va->expr->type) || is_boolean(va->expr->type) || is_real(va->expr->type) )
+        {
+            error_datatype_is_not(line_number, va->expr->type, "object");
+        }
+    }
 
     return md;
 }
@@ -995,11 +1028,10 @@ struct variable_access_t *set_variable_access_id(char *id, char *recordname, str
 {
     struct variable_access_t *va = new_variable_access();
     va->type = VARIABLE_ACCESS_T_IDENTIFIER;
-    va->data.id = (char *)malloc(strlen(id));
+    va->data.id = (char *)malloc(strlen(id)*sizeof(char));
     strcpy(va->data.id, id);
-    va->recordname = recordname;
-    va->expr = expr;
-
+    
+    /* Info about this id will be known after parsing */
     return va;
 }
 
@@ -1314,11 +1346,11 @@ char* format_attr_id(char id[], int id_length)
     return real_id;
 }
 
-void print_hash_table()
+void print_hash_table(struct attribute_table_t* attr)
 {
     struct attribute_table_t *t;
                    
-    for(t=attr_hash_table; t != NULL; t=t->hh.next) 
+    for(t=attr; t != NULL; t=t->hh.next) 
     {
         
 
@@ -1359,6 +1391,11 @@ int is_integer(char *id)
 int is_real(char *id)
 {
     return !(strcmp(id, "real"));
+}
+
+int is_array(char *id)
+{
+    return !(strcmp(id, "array"));
 }
 
 
