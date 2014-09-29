@@ -4,6 +4,8 @@
 4) We do not stop semantic analysis after a single error. The error is thrown but semantic analysis continues.
 5) No functions, classes or variables cannot be named a reserve word (i.e. you cannot have a class named integer)
 6) A variable cannot exceed 30 characters
+7) +/- factor must be a real or an integer
+8) If we find a mismatched type, we show error, but set the type to be the valid type in order to continue analysis to find more errors in order to give the user insight to all errors
 
 REMINDERS:
 1) If a type denoter is a primitive (TYPE_DENOTER_T_IDENTIFIER) its "name" will correspond to integer, boolean or real and its data will be null

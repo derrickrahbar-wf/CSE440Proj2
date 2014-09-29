@@ -42,6 +42,28 @@
 #define ENTITY_FUNCTION 1
 #define ENTITY_VARIABLE 2
 
+#define MULOP_STAR 0
+#define MULOP_SLASH 1
+#define MULOP_MOD 2
+#define MULOP_AND 3
+#define MULOP_NONE -1
+
+#define SIGN_PLUS 0
+#define SIGN_MINUS 1 
+
+#define ADDOP_PLUS 0
+#define ADDOP_MINUS 1
+#define ADDOP_OR 2
+#define ADDOP_NONE -1 
+
+#define RELOP_EQUAL 0
+#define RELOP_NOTEQUAL 1
+#define RELOP_LT 2
+#define RELOP_GT 3
+#define RELOP_LE 4
+#define RELOP_GE 5
+#define RELOP_NONE -1
+
 /* Macro that checks for a malloc error */
 #define CHECK_MEM_ERROR(name) {if (name == NULL) { \
 				 printf("Memory allocation error\n"); \
@@ -221,7 +243,7 @@ struct primary_t{
 	     * 2 - unsigned_constant
 	     * 3 - function_designator
 	     * 4 - expression
-	     * 5 - primary
+	     * 5 - primary (NOT boolean)
 	     */
   union{
     struct variable_access_t *va; 
@@ -244,7 +266,7 @@ struct factor_t{
 	     */
   union {
     struct factor_data_t{
-      int *sign;
+      int sign;
       struct factor_t *next;
     }f;
     struct primary_t *p;
@@ -447,11 +469,11 @@ void check_compatibility(char* type1, char* type2);
 struct class_block_t *set_class_block(struct variable_declaration_list_t *vdl, struct func_declaration_list_t *fdl);
 struct class_identification_t *set_class_identification(char *id, char *extend, int line_number);
 struct class_list_t *set_class_list(struct class_identification_t* ci, struct class_block_t *cb, struct class_list_t *next);
-struct expression_t *set_expression(struct simple_expression_t* se1, int relop, struct simple_expression_t* se2, struct expression_data_t *expr);
+struct expression_t *set_expression(struct simple_expression_t* se1, int relop, struct simple_expression_t* se2, int line_number);
 struct expression_data_t *set_expression_data(float val, char *type);
-struct factor_data_t* set_factor_data(int* sign, struct factor_t* next);
-struct factor_t* set_factor_t_primary(struct primary_t* p, struct expression_data_t* expr);
-struct factor_t* set_factor_t_sign_factor(struct factor_data_t* f, struct expression_data_t* expr);
+struct factor_data_t* set_factor_data(int sign, struct factor_t* next);
+struct factor_t* set_factor_t_primary(struct primary_t* p);
+struct factor_t* set_factor_t_sign_factor(int sign, struct factor_t* f, int line_number);
 struct formal_parameter_section_t *set_formal_parameter_section(struct identifier_list_t *il, char *id, int is_var);
 struct formal_parameter_section_list_t *set_formal_parameter_section_list(struct formal_parameter_section_t *fps, struct formal_parameter_section_list_t *next);
 struct function_block_t *set_function_block(struct variable_declaration_list_t *vdl, struct statement_sequence_t *ss);
@@ -466,32 +488,32 @@ struct indexed_variable_t *set_indexed_variable(struct variable_access_t *va, st
 struct method_designator_t *set_method_designator(struct variable_access_t *va, struct function_designator_t *fd);
 struct object_instantiation_t *set_object_instantiation(char *id, struct actual_parameter_list_t *apl);
 struct primary_data_t* set_primary_data(struct primary_t *next);
-struct primary_t* set_primary_t_expression(struct expression_t *e, struct expression_data_t *expr);
-struct primary_t* set_primary_t_function_designator(struct function_designator_t *fd, struct expression_data_t *expr);
-struct primary_t* set_primary_t_primary(struct primary_data_t *p, struct expression_data_t *expr);
-struct primary_t* set_primary_t_unsigned_constant(struct unsigned_number_t *un, struct expression_data_t *expr);
-struct primary_t *set_primary_t_variable_access(struct variable_access_t* va, struct expression_data_t * expr);
+struct primary_t* set_primary_t_expression(struct expression_t *e);
+struct primary_t* set_primary_t_function_designator(struct function_designator_t *fd);
+struct primary_t* set_primary_t_primary(struct primary_t *p, int line_number);
+struct primary_t* set_primary_t_unsigned_constant(struct unsigned_number_t *un);
+struct primary_t *set_primary_t_variable_access(struct variable_access_t* va);
 struct print_statement_t *set_print_statement(struct variable_access_t *va);
 struct program_t *set_program(struct program_heading_t *ph, struct class_list_t *cl);
 struct program_heading_t *set_program_heading(char *id, struct identifier_list_t *il);
 struct range_t *set_range(struct unsigned_number_t *min, struct unsigned_number_t *max, int line_number);
 int * set_sign(int sign);
 float simple_expression_relop(struct simple_expression_t *se1, int relop, struct simple_expression_t *se2);
-struct simple_expression_t *set_simple_expression(struct term_t *t, int addop, struct expression_data_t *expr, struct simple_expression_t *next);
+struct simple_expression_t *set_simple_expression(struct term_t *t, int addop, struct simple_expression_t *next, int line_number);
 struct statement_t *set_statement_assignment(struct assignment_statement_t *as, int line_number);
 struct statement_t *set_statement_if(struct if_statement_t *is, int line_number);
 struct statement_t *set_statement_print(struct print_statement_t *ps, int line_number);
 struct statement_t *set_statement_statement_sequence(struct statement_sequence_t *ss, int line_number);
 struct statement_t *set_statement_while(struct while_statement_t *ws, int line_number);
 struct statement_sequence_t *set_statement_sequence(struct statement_t *s, struct statement_sequence_t *next);
-struct term_t *set_term(struct factor_t *f, int mulop, struct expression_data_t* expr, struct term_t *next);
+struct term_t *set_term(struct factor_t *f, int mulop, struct term_t *term, int line_number);
 struct type_denoter_t *set_type_denoter_array(char *name, struct array_type_t *at);
 struct type_denoter_t *set_type_denoter_class(char *name, struct class_list_t *cl);
 struct type_denoter_t *set_type_denoter_id(char *name, char *id);
 struct unsigned_number_t *set_unsigned_number(int ui, struct expression_data_t* expr);
 struct variable_access_t *set_variable_access_id(char *id, char *recordname, struct expression_data_t *expr);
 struct variable_access_t *set_variable_access_indexed_variable(struct indexed_variable_t *iv, char *record_name, struct expression_data_t *expr);
-struct variable_access_t *set_variable_access_attribute_designator(struct attribute_designator_t *ad, char *recordname, struct expression_data_t *expr);
+struct variable_access_t *set_variable_access_attribute_designator(struct attribute_designator_t *ad);
 struct variable_access_t *set_variable_access_method_designator(struct method_designator_t *md, char *recordname, struct expression_data_t *expr);
 struct variable_declaration_t *set_variable_declaration(struct identifier_list_t *il, struct type_denoter_t *tden, int line_number);
 struct variable_declaration_list_t *set_variable_declaration_list(struct variable_declaration_t *vd, struct variable_declaration_list_t *next);
@@ -584,6 +606,10 @@ void add_func_var_dec_list_to_aht(struct variable_declaration_list_t *var_dec_li
 void add_func_params_to_aht(struct formal_parameter_section_list_t *param_list, int scope, struct function_declaration_t *func);
 void print_hash_table();
 char* format_attr_id(char id[], int id_length);
+
+int is_real(char *id);
+int is_boolean(char *id);
+int is_integer(char *id);
 
 
 

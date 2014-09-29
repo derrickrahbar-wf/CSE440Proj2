@@ -208,13 +208,126 @@ struct class_list_t *set_class_list(struct class_identification_t* ci, struct cl
     return cl;
 } 
 
-struct expression_t *set_expression(struct simple_expression_t* se1, int relop, struct simple_expression_t* se2, struct expression_data_t *expr)
+struct expression_t *set_expression(struct simple_expression_t* se1, int relop, struct simple_expression_t* se2, int line_number)
 {
     struct expression_t *e = new_expression();
     e->se1 = se1;
     e->relop = relop;
     e->se2 = se2;
-    e->expr = expr;
+
+    if(relop == RELOP_NONE)
+    {
+        /*just a simple expression given in se1*/
+        e->expr = se1->expr;
+    }
+    else if(se1->expr != NULL && se2->expr != NULL) /*we can eval this exression*/
+    {
+        switch(relop)
+        {
+            case RELOP_EQUAL:
+            case RELOP_NOTEQUAL:
+                if(strcmp(se1->expr->type, se2->expr->type) == 0)
+                {
+                    /*they are the same type this is valid*/
+                    if(relop == RELOP_NOTEQUAL) /*check if not equal*/
+                    {
+                        if(se1->expr->val != se2->expr->val)
+                        {
+                            e->expr = set_expression_data(1, "boolean"); /*this evaluated to true*/
+                        }
+                        else
+                        {
+                            e->expr = set_expression_data(0, "boolean"); /*false*/
+                        }
+                    }
+                    else /*check if equal*/
+                    {
+                        if(se1->expr->val == se2->expr->val)
+                        {
+                            e->expr = set_expression_data(1, "boolean"); /*this evaluated to true*/
+                        }
+                        else
+                        {
+                            e->expr = set_expression_data(0, "boolean"); /*false*/
+                        } 
+                    }
+                }
+                else
+                {
+                    error_type_mismatch(line_number, se1->expr->type, se2->expr->type);
+                }
+
+            break;
+            case RELOP_LT: /*only valid for integer and real*/
+            case RELOP_GT:
+            case RELOP_LE:
+            case RELOP_GE:
+                if((is_integer(se1->expr->type) || is_real(se1->expr->type)) && 
+                   (is_integer(se2->expr->type) || is_real(se2->expr->type)))
+                {
+                    switch(relop)
+                    {
+                        case RELOP_LT:
+                            if(se1->expr->val < se2->expr->val)
+                            {
+                                e->expr = set_expression_data(1, "boolean"); /*se1 < se2 */
+                            }
+                            else
+                            {
+                                e->expr = set_expression_data(0, "boolean"); /*false*/
+                            }
+                        break;
+                        case RELOP_GE:
+                            if(se1->expr->val >= se2->expr->val)
+                            {
+                                e->expr = set_expression_data(1, "boolean"); /*se1 >= se2 */
+                            }
+                            else
+                            {
+                                e->expr = set_expression_data(0, "boolean"); /*false*/
+                            }
+                        break;
+                        case RELOP_LE:
+                            if(se1->expr->val <= se2->expr->val)
+                            {
+                                e->expr = set_expression_data(1, "boolean"); /*se1 <= se2 */
+                            }
+                            else
+                            {
+                                e->expr = set_expression_data(0, "boolean"); /*false*/
+                            }
+                        break;
+                        case RELOP_GT:
+                            if(se1->expr->val > se2->expr->val)
+                            {
+                                e->expr = set_expression_data(1, "boolean"); /*se1 > se2 */
+                            }
+                            else
+                            {
+                                e->expr = set_expression_data(0, "boolean"); /*false*/
+                            }
+                        break;
+                    }
+                }
+                else
+                {
+                    /*bad type error*/
+                    if(!(is_real(se1->expr->type) || is_integer(se1->expr->type)))
+                    {
+                        error_datatype_is_not(line_number, se1->expr->type, "real or integer");
+                    }
+                    if(!(is_real(se2->expr->type) || is_integer(se2->expr->type)))
+                    {
+                        error_datatype_is_not(line_number, se2->expr->type, "real or integer");
+                    }
+
+                    /*set to int to continue eval*/
+                    e->expr = set_expression_data(0, "boolean");   
+                }
+            
+            break;
+        }
+    }
 
     return e;
 }
@@ -232,33 +345,49 @@ struct expression_data_t *set_expression_data(float val, char *type)
 //FACTOR_T METHODS
 ////////////////////////////////////////////////////////////////////////////////////////
 
-struct factor_t* set_factor_t_sign_factor(struct factor_data_t* f, struct expression_data_t* expr)
+struct factor_t* set_factor_t_sign_factor(int sign, struct factor_t* f, int line_number)
 {
     struct factor_t *fsf = new_factor();
     fsf->type = FACTOR_T_SIGNFACTOR;
-    fsf->data.f = *f;
-    fsf->expr = expr;
+    fsf->data.f = *(set_factor_data(sign, f));
+
+    /*This would need to be a real or an integer to have a sign in from of it */
+    if(f->expr != NULL)
+    {
+        if(strcmp(f->expr->type, "integer") == 0 || strcmp(f->expr->type, "real") == 0)
+        {
+            /*This is a valid type of sign factor*/
+            fsf->expr = set_expression_data((sign == SIGN_PLUS)? f->expr->val : -1*f->expr->val, 
+                                            f->expr->type);
+        }
+        else
+        {
+            error_datatype_is_not(line_number, f->expr->type, "real or integer");
+
+            /* set this to a valid type in order to continue eval*/
+            fsf->expr = set_expression_data(-1, "integer");
+        }
+    }
 
     return fsf;
 
 }
 
-struct factor_t* set_factor_t_primary(struct primary_t* p, struct expression_data_t* expr)
+struct factor_t* set_factor_t_primary(struct primary_t* p)
 {
     struct factor_t *fp = new_factor();
     fp->type = FACTOR_T_PRIMARY;
     fp->data.p = p;
-    fp->expr = expr;
+    fp->expr = p->expr; /*if this is populated it will be the same for this factor*/
 
     return fp;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////
 
-struct factor_data_t* set_factor_data(int* sign, struct factor_t* next)
+struct factor_data_t* set_factor_data(int sign, struct factor_t* next)
 {
     struct factor_data_t* fd = new_factor_data();
-    fd->sign = (int *)malloc(sizeof(int));
     fd->sign = sign;
     fd->next = next;
 
@@ -397,52 +526,71 @@ struct object_instantiation_t *set_object_instantiation(char *id, struct actual_
 //PRIMARY_T METHODS
 ////////////////////////////////////////////////////////////////////////////////////////
 
-struct primary_t *set_primary_t_variable_access(struct variable_access_t *va, struct expression_data_t *expr)
+struct primary_t *set_primary_t_variable_access(struct variable_access_t *va)
 {
     struct primary_t *p = new_primary();
     p->type = PRIMARY_T_VARIABLE_ACCESS;
     p->data.va = va;
-    p->expr = expr;
+    /*This will be evaluated after parse by finding the type of the variable access*/
 
     return p;
 }
 
-struct primary_t* set_primary_t_unsigned_constant(struct unsigned_number_t *un, struct expression_data_t *expr)
+struct primary_t* set_primary_t_unsigned_constant(struct unsigned_number_t *un)
 {
     struct primary_t *p = new_primary();
     p->type = PRIMARY_T_UNSIGNED_CONSTANT;
     p->data.un = un;
-    p->expr = expr;
+    p->expr = un->expr; /*This will set the value to the int val and the type to int*/
 
     return p;
 }
 
-struct primary_t* set_primary_t_function_designator(struct function_designator_t *fd, struct expression_data_t *expr)
+struct primary_t* set_primary_t_function_designator(struct function_designator_t *fd)
 {
     struct primary_t *p = new_primary();
     p->type = PRIMARY_T_FUNCTION_DESIGNATOR;
     p->data.fd = fd;
-    p->expr = expr;
+    /*We do not know what the return val for this function is must eval after parse
+     this will be the function return value of fd->id (find is hash table)*/
 
     return p;
 }
 
-struct primary_t* set_primary_t_expression(struct expression_t *e, struct expression_data_t *expr)
+struct primary_t* set_primary_t_expression(struct expression_t *e)
 {
     struct primary_t *p = new_primary();
     p->type = PRIMARY_T_EXPRESSION;
     p->data.e = e;
-    p->expr = expr;
+    p->expr = e->expr; /*the type of this primary is whatever the expression type is*/
 
     return p;
 }
 
-struct primary_t* set_primary_t_primary(struct primary_data_t *p, struct expression_data_t *expr)
+struct primary_t* set_primary_t_primary(struct primary_t *p, int line_number)
 {
+    /*This must be a boolean type because this was preset with a NOT*/
     struct primary_t *pr = new_primary();
     pr->type = PRIMARY_T_PRIMARY;
-    pr->data.p = *p;
-    pr->expr = expr;
+    pr->data.p = *(set_primary_data(p));
+
+    if(p->expr != NULL)
+    {
+        if(strcmp(p->expr->type, "boolean") == 0)
+        {
+            /*we are good, this primary is a boolean perform NOT*/
+            pr->expr = set_expression_data((p->expr->val)? 0:1, p->expr->type);
+        }
+        else
+        {
+            error_datatype_is_not(line_number, p->expr->type, "boolean");
+            
+            /*set the type to the correct value in order to continue eval*/
+            pr->expr = set_expression_data(0, "boolean");
+        }
+    }
+    
+    /*if the expression was not set, then we need to wait until after parsing to eval*/
 
     return pr;
 }
@@ -512,13 +660,90 @@ float simple_expression_relop(struct simple_expression_t *se1, int relop, struct
     return -1;
 }
 
-struct simple_expression_t *set_simple_expression(struct term_t *t, int addop, struct expression_data_t *expr, struct simple_expression_t *next)
+struct simple_expression_t *set_simple_expression(struct term_t *t, int addop, struct simple_expression_t *next, int line_number)
 {
     struct simple_expression_t *se = new_simple_expression();
     se->t = t;
     se->addop = addop;
-    se->expr = expr;
     se->next = next;
+
+    if(addop == ADDOP_NONE) /*this is just a term*/
+    {
+        se->expr = t->expr;
+    }
+    else if(t->expr != NULL && next->expr != NULL) /*if both expr are populated we can eval*/
+    {
+        char *t_type = t->expr->type;
+        char *n_type = next->expr->type;
+
+        switch(addop)
+        {
+            case ADDOP_PLUS:
+            case ADDOP_MINUS: /*only valid for real and integer*/
+                if((is_integer(t_type) || is_real(t_type)) &&
+                    (is_integer(n_type) || is_real(n_type)))
+                {
+                    if(is_real(t_type) || is_real(n_type))
+                    {
+                        /*one is real so expr must be real*/
+                        if(addop == ADDOP_PLUS)
+                        {
+                            se->expr = set_expression_data(next->expr->val + t->expr->val, "real");
+                        }
+                        else
+                        {
+                            se->expr = set_expression_data(next->expr->val - t->expr->val, "real");
+                        }   
+                    }
+                    else
+                    {
+                        if(addop == ADDOP_PLUS)
+                        {
+                            se->expr = set_expression_data(next->expr->val + t->expr->val, "integer");
+                        }
+                        else
+                        {
+                            se->expr = set_expression_data(next->expr->val - t->expr->val, "integer");
+                        }
+                    }
+                }
+                else
+                {
+                    if(!(is_integer(t_type) || is_real(t_type)))
+                    {
+                        error_datatype_is_not(line_number, t_type, "real or integer");
+                    }
+                    if(!(is_integer(n_type) || is_real(n_type)))
+                    {
+                        error_datatype_is_not(line_number, n_type, "real or integer");
+                    }
+
+                    /*set to int so we can continue parsing*/
+                    se->expr = set_expression_data(-1, "integer");
+                }
+            break;
+            case ADDOP_OR: /*only valid for boolean*/
+                if(is_boolean(t_type) && is_boolean(n_type))
+                {
+                    se->expr = set_expression_data((int)next->expr->val | (int)t->expr->val, "boolean");
+                }
+                else
+                {
+                    if(!is_boolean(t_type))
+                    {
+                        error_datatype_is_not(line_number, t_type, "boolean");
+                    }
+                    if(!is_boolean(n_type))
+                    {
+                        error_datatype_is_not(line_number, n_type, "boolean");
+                    }
+
+                    /*set to int so we can continue parsing*/
+                    se->expr = set_expression_data(0, "boolean");
+                }
+            break;
+        }
+    }
 
     return se;
 }
@@ -588,13 +813,121 @@ struct statement_sequence_t *set_statement_sequence(struct statement_t *s, struc
     return ss;
 }
 
-struct term_t *set_term(struct factor_t *f, int mulop, struct expression_data_t* expr, struct term_t *next)
+struct term_t *set_term(struct factor_t *f, int mulop, struct term_t *term, int line_number)
 {
     struct term_t *t = new_term();
     t->f = f;
     t->mulop = mulop;
-    t->expr = expr;
-    t->next = next;
+    t->next = term;
+
+    if(mulop == MULOP_NONE)
+    {
+        t->expr = f->expr; /*no next term, this is just a factor*/
+    }
+    /*if both expr are populated we can analyze this one*/
+    else if(term->expr != NULL && f->expr != NULL)
+    {
+        char * f_type = f->expr->type;
+        char * t_type = term->expr->type;
+
+        /*analyze how to populate expr*/
+        switch(mulop)
+        {
+            case MULOP_STAR: /*only valid for real and integer*/
+            case MULOP_SLASH:
+                   /*we know the type of both sides, therefore we can analyze*/
+                   if((is_real(t_type) || is_integer(t_type)) &&  
+                      (is_real(f_type) || is_integer(f_type)))
+                      {
+                        /*They are both either an integer or a real*/
+                        
+                        if(is_real(t_type) || is_real(f_type))
+                        {
+                            /*one is a real therefore new term will eval to real*/
+                            if(mulop == MULOP_STAR)
+                            {
+                                /*multiply*/
+                                t->expr = set_expression_data(f->expr->val * term->expr->val, "real");
+                            }
+                            else
+                            {
+                                /*divide*/
+                                t->expr = set_expression_data(f->expr->val/term->expr->val, "real");   
+                            }
+                        }
+                        /*both must be integers*/
+                        else
+                        {
+                            if(mulop == MULOP_STAR)
+                            {
+                                /*multiply*/
+                                t->expr = set_expression_data(f->expr->val * term->expr->val, "integer");
+                            }
+                            else
+                            {
+                                /*divide*/
+                                t->expr = set_expression_data(f->expr->val/term->expr->val, "integer");   
+                            }
+                        }
+                      }
+                      else
+                      {
+                        /*bad type error*/
+                        if(!(is_real(f_type) || is_integer(f_type)))
+                        {
+                            error_datatype_is_not(line_number, f_type, "real or integer");
+                        }
+                        if(!(is_real(t_type) || is_integer(t_type)))
+                        {
+                            error_datatype_is_not(line_number, t_type, "real or integer");
+                        }
+
+                        /*set to int to continue eval*/
+                        t->expr = set_expression_data(-1, "integer");
+                      } 
+            break;
+            case MULOP_MOD: /*only valid for integer*/
+                if(is_integer(f_type) && is_integer(t_type))
+                {
+                    t->expr = set_expression_data((int)term->expr->val % (int)f->expr->val, "integer");
+                }
+                else
+                {
+                    if(!is_integer(f_type))
+                    {
+                        error_datatype_is_not(line_number, f_type, "integer");
+                    }
+                    if(!is_integer(t_type))
+                    {
+                        error_datatype_is_not(line_number, t_type, "integer");
+                    }
+                    /*set to int to continue eval*/
+                    t->expr = set_expression_data(-1, "integer");
+                }
+
+            break;
+            case MULOP_AND: /*only valid for boolean*/
+                if(is_boolean(f_type) && is_boolean(t_type))
+                {
+                    t->expr = set_expression_data((int)term->expr->val & (int)f->expr->val, "boolean");
+                }
+                else
+                {
+                    if(!is_boolean(f_type))
+                    {
+                        error_datatype_is_not(line_number, f_type, "boolean");
+                    }
+                    if(!is_boolean(t_type))
+                    {
+                        error_datatype_is_not(line_number, t_type, "boolean");
+                    }
+                    /*set to int to continue eval*/
+                    t->expr = set_expression_data(-1, "boolean");
+                }
+
+            break;
+        }
+    }
 
     return t;
 }
@@ -681,13 +1014,11 @@ struct variable_access_t *set_variable_access_indexed_variable(struct indexed_va
     return va;
 }
 
-struct variable_access_t *set_variable_access_attribute_designator(struct attribute_designator_t *ad, char *recordname, struct expression_data_t *expr)
+struct variable_access_t *set_variable_access_attribute_designator(struct attribute_designator_t *ad)
 {
     struct variable_access_t *va = new_variable_access();
     va->type = VARIABLE_ACCESS_T_ATTRIBUTE_DESIGNATOR;
     va->data.ad = ad;
-    va->recordname = recordname;
-    va->expr = expr;
 
     return va;  
 }
@@ -1013,6 +1344,21 @@ void print_hash_table()
         }
         printf("\n\n");
     }
+}
+
+int is_boolean(char *id)
+{
+    return !(strcmp(id, "boolean"));
+}
+
+int is_integer(char *id)
+{
+    return !(strcmp(id, "integer"));
+}
+
+int is_real(char *id)
+{
+    return !(strcmp(id, "real"));
 }
 
 

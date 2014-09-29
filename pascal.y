@@ -64,7 +64,7 @@
 %type <se> simple_expression
 %type <t> term
 %type <f> factor
-%type <i> sign
+%type <op> sign
 %type <p> primary
 %type <un> unsigned_constant
 %type <un> unsigned_number
@@ -214,7 +214,7 @@ array_type : ARRAY LBRAC range RBRAC OF type_denoter
 
 range : unsigned_integer DOTDOT unsigned_integer
 	{
-        $$ = set_range($1, $3);
+        $$ = set_range($1, $3, line_number);
 	}
  ;
 
@@ -255,7 +255,7 @@ func_declaration_list : func_declaration_list semicolon function_declaration
 	}
  |
 	{
-        $$ = set_func_declaration_list(NULL, NULL);
+        $$ = NULL;
 	}
  ;
 
@@ -415,7 +415,7 @@ variable_access : identifier
 	}
  | attribute_designator
 	{
-        $$ = set_variable_access_attribute_designator($1, NULL, NULL);
+        $$ = set_variable_access_attribute_designator($1);
 	}
  | method_designator
 	{
@@ -488,86 +488,73 @@ boolean_expression : expression ;
 
 expression : simple_expression
 	{
-        $$ = set_expression($1, -1, NULL, $1->expr);
+        $$ = set_expression($1, RELOP_NONE, NULL, line_number);
 	}
  | simple_expression relop simple_expression
 	{
-        $$ = set_expression($1, $2, $3, 
-                            set_expression_data(simple_expression_relop($1, $2, $3), 
-                                                $1->expr->type));
+        $$ = set_expression($1, $2, $3, line_number);
 	}
  ;
 
 simple_expression : term
 	{
-        $$ = set_simple_expression($1, -1, $1->expr, NULL);
+        $$ = set_simple_expression($1, ADDOP_NONE, NULL, line_number);
 	}
  | simple_expression addop term
 	{        
-        $$ = set_simple_expression($3, 
-                                   $2, 
-                                   set_expression_data($1->expr->val + $3->expr->val,  
-                                                       $1->expr->type), 
-                                   $1);
+        $$ = set_simple_expression($3, $2, $1, line_number);
 	}
  ;
 
 term : factor
 	{
-        $$ = set_term($1, -1, $1->expr, NULL);
+        $$ = set_term($1, MULOP_NONE, NULL, line_number);
 	}
  | term mulop factor
 	{ 
-        $$ = set_term($3, 
-                      $2, 
-                      set_expression_data($1->expr->val * $3->expr->val, 
-                                          $1->expr->type), 
-                      $1);
+        $$ = set_term($3, $2, $1, line_number);
 	}
  ;
 
 sign : PLUS
 	{
-        $$ = set_sign(PLUS);
+        $$ = SIGN_PLUS;
 	}
  | MINUS
 	{
-        $$ = set_sign(MINUS);
+        $$ = SIGN_MINUS;
 	}
  ;
 
 factor : sign factor
 	{
-        $$ = set_factor_t_sign_factor(set_factor_data($1, $2), 
-                                      set_expression_data($2->expr->val, NULL));
+        $$ = set_factor_t_sign_factor($1, $2, line_number);
 	}
  | primary 
 	{
-        $$ = set_factor_t_primary($1, $1->expr);
+        $$ = set_factor_t_primary($1);
 	}
  ;
 
 primary : variable_access
 	{
-        $$ = set_primary_t_variable_access($1, $1->expr);
+        $$ = set_primary_t_variable_access($1);
 	}
  | unsigned_constant
 	{
-        $$ = set_primary_t_unsigned_constant($1, $1->expr);
+        $$ = set_primary_t_unsigned_constant($1);
 	}
  | function_designator
 	{
-        $$ = set_primary_t_function_designator($1, NULL);
+        $$ = set_primary_t_function_designator($1);
 	}
  | LPAREN expression RPAREN
 	{
-        $$ = set_primary_t_expression($2, $2->expr);
+        $$ = set_primary_t_expression($2);
 	}
  | NOT primary
 	{
-        $$ = set_primary_t_primary(set_primary_data($2), 
-                                   set_expression_data($2->expr->val, 
-                                                       NULL));
+        $$ = set_primary_t_primary($2, line_number);
 	}
  ;
 
@@ -578,7 +565,7 @@ unsigned_number : unsigned_integer ;
 
 unsigned_integer : DIGSEQ
 	{
-        $$ = set_unsigned_number(atoi(yytext), set_expression_data(atof(yytext), PRIMITIVE_TYPE_NAME_INTEGER));
+        $$ = set_unsigned_number(atoi(yytext), set_expression_data(atof(yytext), "integer"));
 	}
  ;
 
@@ -591,59 +578,59 @@ function_designator : identifier params
 
 addop: PLUS
 	{
-        $$ = PLUS;
+        $$ = ADDOP_PLUS;
 	}
  | MINUS
 	{
-        $$ = MINUS;
+        $$ = ADDOP_MINUS;
 	}
  | OR
 	{
-        $$ = OR;
+        $$ = ADDOP_OR;
 	}
  ;
 
 mulop : STAR
 	{
-        $$ = STAR;
+        $$ = MULOP_STAR;
 	}
  | SLASH
 	{
-        $$ = SLASH;
+        $$ = MULOP_SLASH;
 	}
  | MOD
 	{
-        $$ = MOD;
+        $$ = MULOP_MOD;
 	}
  | AND
 	{
-        $$ = AND;
+        $$ = MULOP_AND;
 	}
  ;
 
 relop : EQUAL
 	{
-        $$ = EQUAL;
+        $$ = RELOP_EQUAL;
 	}
  | NOTEQUAL
 	{
-        $$ = NOTEQUAL;
+        $$ = RELOP_NOTEQUAL;
 	}
  | LT
 	{
-        $$ = LT;
+        $$ = RELOP_LT;
 	}
  | GT
 	{
-        $$ = GT;
+        $$ = RELOP_GT;
 	}
  | LE
 	{
-        $$ = LE;
+        $$ = RELOP_LE;
 	}
  | GE
 	{
-        $$ = GE;
+        $$ = RELOP_GE;
 	}
  ;
 

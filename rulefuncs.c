@@ -795,7 +795,7 @@ struct factor_data_t *new_factor_data()
 
   fd = (struct factor_data_t *)malloc(sizeof(struct factor_data_t));
   CHECK_MEM_ERROR(fd);
-  fd->sign = NULL;
+  fd->sign = -1;
   fd->next = NULL;
 
   return fd;
