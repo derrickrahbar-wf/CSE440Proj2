@@ -17,9 +17,23 @@ END;
 
 FUNCTION testing(value :integer): integer;
 BEGIN
- PRINT retval
+ PRINT retval;
+ retval := 3
 END  
   
+
+END
+
+class tes
+BEGIN
+
+   VAR object : main;
+
+FUNCTION tes(value : integer): integer;
+BEGIN
+    object := 1;
+    print object 
+END
 
 END
 .
@@ -35,7 +49,8 @@ BEGIN
 
 FUNCTION tes(value : integer): integer;
 BEGIN
-    object := 1 
+    object := 1;
+    print object 
 END
 
 END

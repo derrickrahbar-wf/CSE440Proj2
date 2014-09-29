@@ -187,10 +187,11 @@ struct class_block_t *set_class_block(struct variable_declaration_list_t *vdl, s
     
     create_statement_hash_table(fdl);
     cb->statement_hash_table = stat_hash_table;
-    stat_hash_table = NULL /*set global head back to null for next class */
+    stat_hash_table = NULL; /*set global head back to null for next class */
 
     /* FOR DEBUGGING */
     print_hash_table(cb->attribute_hash_table);
+    print_statement_hash_table(cb->statement_hash_table);
 
 
     return cb;
@@ -1271,6 +1272,16 @@ struct type_denoter_t* generate_type_denoter(char* return_type)
     return type;
 }
 
+void add_statement_to_hash_table(struct statement_table_t *statement)
+{
+    struct statement_table_t *item_ptr;
+    HASH_FIND_STR(stat_hash_table, statement->string_key, item_ptr);
+    if(item_ptr == NULL)
+    {
+        HASH_ADD_STR(stat_hash_table, string_key, statement);
+    }   
+}
+
 
 void add_attribute_to_hash_table(struct attribute_table_t *attr, int entity_type)
 {
@@ -1327,9 +1338,10 @@ struct statement_table_t* create_statement_node(struct statement_t *stat, struct
     statement->type = stat->type;
     statement->line_number = line_number;
     statement->function = function;
-    statement->statement_data = stat->data;
+    statement->statement_data = (union statement_union*)malloc(sizeof(stat->data));
+    statement->statement_data = &stat->data;
 
-    char *key = (char*)malloc(strlen(statement->function->fh->id) + strlen("1") + sizeof(char*));
+    char *key = (char*)malloc(strlen(statement->function->fh->id) + strlen("1") + sizeof(char *));
     strcpy(key, statement->function->fh->id);
 
     switch(statement->type)
@@ -1351,7 +1363,13 @@ struct statement_table_t* create_statement_node(struct statement_t *stat, struct
             break;
     }
 
+    strcat(key, (char *)statement->statement_data);
 
+    strcpy(statement->string_key, key);
+
+    printf("and this is the sketchy key: %s\n", statement->string_key);
+
+    return statement;
 }
 
 struct attribute_table_t* create_attribute_node(char* id,
@@ -1413,14 +1431,27 @@ char* format_attr_id(char id[], int id_length)
     return real_id;
 }
 
+void print_statement_hash_table(struct statement_table_t *stat)
+{
+    struct statement_table_t *t;
+    printf("/////////////////STATEMENT HAST TABLE/////////////////////\n");
+
+    for(t=stat; t!=NULL; t= t->hh.next)
+    {
+        printf("STATEMENT TYPE: %d LINE_NUMBER: %d FUNCTION: %s DATA PTR: %p\n", 
+                t->type, t->line_number, t->function->fh->id, t->statement_data);
+
+    }
+    printf("///////////////////////////////////////////////////////////\n");
+}
+
 void print_hash_table(struct attribute_table_t* attr)
 {
     struct attribute_table_t *t;
+    printf("//////////////ATTRIBUTE HASH TABLE//////////////\n");
                    
     for(t=attr; t != NULL; t=t->hh.next) 
     {
-        
-
         printf("TYPE: %s LINE NUMBER %d SCOPE: %d IS FUNCTION: %d ID: %s ", t->type->name, t->line_number, t->scope, t->is_func, format_attr_id(t->id, t->id_length));
         if(t->function->fh != NULL)
         {
@@ -1441,8 +1472,9 @@ void print_hash_table(struct attribute_table_t* attr)
             }
             
         }
-        printf("\n\n");
+        printf("\n");
     }
+    printf("/////////////////////////////////\n\n");
 }
 
 int is_boolean(char *id)

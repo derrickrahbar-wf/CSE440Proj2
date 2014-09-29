@@ -374,6 +374,14 @@ struct function_block_t{
   struct statement_sequence_t *ss;
 };
 
+ union statement_union{
+        struct assignment_statement_t *as;
+        struct statement_sequence_t *ss;
+        struct if_statement_t *is;
+        struct while_statement_t *ws;
+        struct print_statement_t *ps;
+  };
+
 struct statement_sequence_t;
 #define STATEMENT_T_ASSIGNMENT 1
 #define STATEMENT_T_SEQUENCE 2
@@ -388,13 +396,7 @@ struct statement_t {
 	     * 5 - print_statement
 	     */
 
-  union{
-    struct assignment_statement_t *as;
-    struct statement_sequence_t *ss;
-    struct if_statement_t *is;
-    struct while_statement_t *ws;
-    struct print_statement_t *ps;
-  }data;
+  union statement_union data;
   int line_number;
 };
 
@@ -403,6 +405,8 @@ struct statement_sequence_t{
   struct statement_sequence_t *next;
   int line_number;
 };
+
+
 
 /* ---------------------------------------------------------------- */
 
@@ -550,16 +554,10 @@ struct statement_table_t{
     int line_number;
     struct function_declaration_t *function;
     
-    union{
-        struct assignment_statement_t *as;
-        struct statement_sequence_t *ss;
-        struct if_statement_t *is;
-        struct while_statement_t *ws;
-        struct print_statement_t *ps;
-  }statement_data;
+    union statement_union* statement_data;
 
   UT_hash_handle hh; /* defines structure as a hashable object */
-  char string_key[35]; /*key for this statement*/
+  char string_key[31 + sizeof(union statement_union*)]; /*key for this statement*/
 };
 
 struct class_table_t {
@@ -593,7 +591,6 @@ void add_func_var_to_aht(struct variable_declaration_list_t *var_dec_list, int s
 
 void check_against_reserved_words(char* id, int line_number, int entity_type);
 struct class_table_t* create_class_hash_table(struct class_list_t *class_list);
-struct statement_table_t* create_statement_hash_table(struct func_declaration_list_t *func_dec_list);
 struct attribute_table_t* create_attribute_node(char* id,
                                                 struct type_denoter_t *type,
                                                 int line_number, 
@@ -610,6 +607,10 @@ void print_hash_table(struct attribute_table_t* attr);
 char* format_attr_id(char id[], int id_length);
 
 void create_statement_hash_table(struct func_declaration_list_t *func_dec_list);
+void add_statement_list_to_sht(struct function_declaration_t *func_dec);
+struct statement_table_t* create_statement_node(struct statement_t *stat, struct function_declaration_t *function, int line_number);
+void add_statement_to_hash_table(struct statement_table_t *statement);
+void print_statement_hash_table(struct statement_table_t *stat);
 
 int is_real(char *id);
 int is_boolean(char *id);
