@@ -337,11 +337,11 @@ compound_statement : PBEGIN statement_sequence END
 
 statement_sequence : statement
 	{
-        $$ = set_statement_sequence($1, NULL);
+        $$ = set_statement_sequence($1, NULL, line_number);
 	}
  | statement_sequence semicolon statement
 	{
-        $$ = set_statement_sequence($3, $1);
+        $$ = set_statement_sequence($3, $1, line_number);
 	}
  ;
 

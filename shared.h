@@ -401,6 +401,7 @@ struct statement_t {
 struct statement_sequence_t{
   struct statement_t *s;
   struct statement_sequence_t *next;
+  int line_number;
 };
 
 /* ---------------------------------------------------------------- */
@@ -505,7 +506,7 @@ struct statement_t *set_statement_if(struct if_statement_t *is, int line_number)
 struct statement_t *set_statement_print(struct print_statement_t *ps, int line_number);
 struct statement_t *set_statement_statement_sequence(struct statement_sequence_t *ss, int line_number);
 struct statement_t *set_statement_while(struct while_statement_t *ws, int line_number);
-struct statement_sequence_t *set_statement_sequence(struct statement_t *s, struct statement_sequence_t *next);
+struct statement_sequence_t *set_statement_sequence(struct statement_t *s, struct statement_sequence_t *next, int line_number);
 struct term_t *set_term(struct factor_t *f, int mulop, struct term_t *term, int line_number);
 struct type_denoter_t *set_type_denoter_array(char *name, struct array_type_t *at);
 struct type_denoter_t *set_type_denoter_class(char *name, struct class_list_t *cl);
@@ -558,6 +559,7 @@ struct statement_table_t{
   }statement_data;
 
   UT_hash_handle hh; /* defines structure as a hashable object */
+  char string_key[35]; /*key for this statement*/
 };
 
 struct class_table_t {
@@ -606,6 +608,8 @@ void add_func_var_dec_list_to_aht(struct variable_declaration_list_t *var_dec_li
 void add_func_params_to_aht(struct formal_parameter_section_list_t *param_list, int scope, struct function_declaration_t *func);
 void print_hash_table(struct attribute_table_t* attr);
 char* format_attr_id(char id[], int id_length);
+
+void create_statement_hash_table(struct func_declaration_list_t *func_dec_list);
 
 int is_real(char *id);
 int is_boolean(char *id);

@@ -10,6 +10,9 @@
 /* Global head to the attribute hash table */
 struct attribute_table_t *attr_hash_table = NULL;
 
+/*Global head to the statement hast table */
+struct statement_table_t *stat_hash_table = NULL;
+
 
 /* ----------------------------------------------------------------------- 
  * Returns a hashkey value for the given lexeme
@@ -181,6 +184,11 @@ struct class_block_t *set_class_block(struct variable_declaration_list_t *vdl, s
     create_attribute_hash_table(fdl, vdl);
     cb->attribute_hash_table = attr_hash_table;
     attr_hash_table = NULL; /*set global head back to null for next class*/
+    
+    create_statement_hash_table(fdl);
+    cb->statement_hash_table = stat_hash_table;
+    stat_hash_table = NULL /*set global head back to null for next class */
+
     /* FOR DEBUGGING */
     print_hash_table(cb->attribute_hash_table);
 
@@ -837,11 +845,12 @@ struct statement_t *set_statement_print(struct print_statement_t *ps, int line_n
 
 ////////////////////////////////////////////////////////////////////////////////////////
 
-struct statement_sequence_t *set_statement_sequence(struct statement_t *s, struct statement_sequence_t *next)
+struct statement_sequence_t *set_statement_sequence(struct statement_t *s, struct statement_sequence_t *next, int line_number)
 {
     struct statement_sequence_t *ss = new_statement_sequence();
     ss->s = s;
     ss->next = next;
+    ss->line_number = line_number;
 
     return ss;
 }
@@ -1103,6 +1112,31 @@ struct while_statement_t *set_while_statement(struct expression_t *e, struct sta
 ////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////
 
+void create_statement_hash_table(struct func_declaration_list_t *func_dec_list)
+{
+    while(func_dec_list != NULL)
+    {
+        add_statement_list_to_sht(func_dec_list->fd);
+
+        func_dec_list = func_dec_list->next;
+    }
+
+}
+
+void add_statement_list_to_sht(struct function_declaration_t *func_dec)
+{
+    struct statement_sequence_t *stat_seq = func_dec->fb->ss;
+    while(stat_seq != NULL)
+    {
+        struct statement_table_t *statement = create_statement_node(stat_seq->s, func_dec, stat_seq->line_number);
+        add_statement_to_hash_table(statement);
+
+        stat_seq = stat_seq->next;
+    }
+}
+
+
+
 void create_attribute_hash_table(struct func_declaration_list_t *func_dec_list, struct variable_declaration_list_t *var_dec_list)
 {
     /* dummy function dec to use in the key of NFV nodes */
@@ -1286,6 +1320,39 @@ void attribute_hash_table_error(struct attribute_table_t *item_ptr, struct attri
     }
 }
 
+struct statement_table_t* create_statement_node(struct statement_t *stat, struct function_declaration_t *function, int line_number)
+{
+    struct statement_table_t *statement = (struct statement_table_t*)malloc(sizeof(struct statement_table_t));
+    
+    statement->type = stat->type;
+    statement->line_number = line_number;
+    statement->function = function;
+    statement->statement_data = stat->data;
+
+    char *key = (char*)malloc(strlen(statement->function->fh->id) + strlen("1") + sizeof(char*));
+    strcpy(key, statement->function->fh->id);
+
+    switch(statement->type)
+    {
+        case STATEMENT_T_ASSIGNMENT:
+            strcat(key, "1");
+            break;
+        case STATEMENT_T_SEQUENCE:
+            strcat(key, "2");
+            break;
+        case STATEMENT_T_IF:
+            strcat(key, "3");
+            break;
+        case STATEMENT_T_WHILE:
+            strcat(key, "4");
+            break;
+        case STATEMENT_T_PRINT:
+            strcat(key, "5");
+            break;
+    }
+
+
+}
 
 struct attribute_table_t* create_attribute_node(char* id,
                                                 struct type_denoter_t *type,
