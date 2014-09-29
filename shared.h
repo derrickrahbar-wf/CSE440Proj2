@@ -610,6 +610,12 @@ void add_statement_list_to_sht(struct function_declaration_t *func_dec);
 struct statement_table_t* create_statement_node(struct statement_t *stat, struct function_declaration_t *function, int line_number);
 void add_statement_to_hash_table(struct statement_table_t *statement);
 void print_statement_hash_table(struct statement_table_t *stat);
+void find_undefined_extends(struct class_list_t *class_list);
+void add_class_to_hash_table(struct class_table_t *class);
+struct class_table_t* create_class_node(struct class_list_t *class_list);
+void add_class_to_cht(struct class_list_t *class_list);
+struct class_table_t* find_hash_object(struct class_extend_t *class_list);
+void print_class_hash_table(struct class_table_t* class_table);
 
 void create_class_hash_table(struct class_list_t *class_list);
 

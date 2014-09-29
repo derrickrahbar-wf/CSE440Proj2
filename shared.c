@@ -661,12 +661,15 @@ struct print_statement_t *set_print_statement(struct variable_access_t *va)
 
 struct program_t *set_program(struct program_heading_t *ph, struct class_list_t *cl)
 {
+    find_undefined_extends(cl);
     struct program_t *p = new_program();
     p->ph = ph;
     p->cl = cl;
     create_class_hash_table(cl);
     p->class_hash_table = class_hash_table;
 
+    /* DEBUGGING */
+    print_class_hash_table(p->class_hash_table);
     return p;   
 }
 
@@ -1120,10 +1123,17 @@ void create_class_hash_table(struct class_list_t *class_list)
 {
     while(class_list != NULL)
     {
-        // add_class_to_cht(class_list->)
+        add_class_to_cht(class_list);
+        
+        class_list = class_list->next;
     }
 }
 
+void add_class_to_cht(struct class_list_t *class_list)
+{
+    struct class_table_t *class = create_class_node(class_list);
+    add_class_to_hash_table(class);
+}
 
 void create_statement_hash_table(struct func_declaration_list_t *func_dec_list)
 {
@@ -1282,6 +1292,20 @@ struct type_denoter_t* generate_type_denoter(char* return_type)
     return type;
 }
 
+void add_class_to_hash_table(struct class_table_t *class)
+{
+    struct class_table_t *item_ptr;
+    HASH_FIND_STR(class_hash_table, class->id, item_ptr);
+    if(item_ptr == NULL)
+    {
+        HASH_ADD_STR(class_hash_table, id, class);
+    }
+    else
+    {
+        error_class_already_declared(class->line_number, class->id, item_ptr->line_number);
+    }
+}
+
 void add_statement_to_hash_table(struct statement_table_t *statement)
 {
     struct statement_table_t *item_ptr;
@@ -1291,7 +1315,6 @@ void add_statement_to_hash_table(struct statement_table_t *statement)
         HASH_ADD_STR(stat_hash_table, string_key, statement);
     }   
 }
-
 
 void add_attribute_to_hash_table(struct attribute_table_t *attr, int entity_type)
 {
@@ -1339,6 +1362,21 @@ void attribute_hash_table_error(struct attribute_table_t *item_ptr, struct attri
     {
         error_variable_already_declared(failed_attr->line_number, failed_attr->id, item_ptr->line_number);   
     }
+}
+
+struct class_table_t* create_class_node(struct class_list_t *class_list)
+{
+    struct class_table_t *class = (struct class_table_t*)malloc(sizeof(struct class_table_t));
+    
+    class->attribute_hash_table = class_list->cb->attribute_hash_table;
+    class->statement_hash_table = class_list->cb->statement_hash_table;
+    class->extend = find_hash_object(class_list->ci->extend);
+    class->line_number = class_list->ci->line_number;
+    
+    class->id = (char*)malloc(strlen(class_list->ci->id)*sizeof(char));
+    strcpy(class->id, class_list->ci->id);
+
+    return class;
 }
 
 struct statement_table_t* create_statement_node(struct statement_t *stat, struct function_declaration_t *function, int line_number)
@@ -1455,6 +1493,31 @@ void print_statement_hash_table(struct statement_table_t *stat)
     printf("///////////////////////////////////////////////////////////\n");
 }
 
+void find_undefined_extends(struct class_list_t *class_list)
+{
+    while(class_list != NULL)
+    {
+        if(class_list->ci->extend != NULL)
+        {
+            if(class_list->ci->extend->extend_class == NULL)
+            {
+                error_type_not_defined(class_list->ci->line_number, class_list->ci->extend->id);
+            }
+        }
+        class_list = class_list->next;
+    }
+}
+
+struct class_table_t* find_hash_object(struct class_extend_t *class_list)
+{
+    struct class_table_t *item_ptr = NULL;
+    if(class_list != NULL)
+    {
+        HASH_FIND_STR(class_hash_table, class_list->extend_class->ci->id, item_ptr);
+    }
+    return item_ptr;
+}
+
 void print_hash_table(struct attribute_table_t* attr)
 {
     struct attribute_table_t *t;
@@ -1485,6 +1548,22 @@ void print_hash_table(struct attribute_table_t* attr)
         printf("\n");
     }
     printf("/////////////////////////////////\n\n");
+}
+
+void print_class_hash_table(struct class_table_t* class_table)
+{
+    printf("******************* CLASS TABLE **********************\n");
+    struct class_table_t* cl;
+    for(cl=class_table; cl != NULL; cl=cl->hh.next)
+    {
+        printf("ID: %s", cl->id);
+        if(cl->extend != NULL)
+        {
+            printf(" EXTEND: %s", cl->extend->id);
+        }
+        printf("\n\n");
+    }
+
 }
 
 int is_boolean(char *id)
