@@ -590,7 +590,6 @@ void parse_param_section(struct formal_parameter_section_t *param_section, int s
 void add_func_var_to_aht(struct variable_declaration_list_t *var_dec_list, int scope, struct function_declaration_t *func);
 
 void check_against_reserved_words(char* id, int line_number, int entity_type);
-struct class_table_t* create_class_hash_table(struct class_list_t *class_list);
 struct attribute_table_t* create_attribute_node(char* id,
                                                 struct type_denoter_t *type,
                                                 int line_number, 
@@ -611,6 +610,8 @@ void add_statement_list_to_sht(struct function_declaration_t *func_dec);
 struct statement_table_t* create_statement_node(struct statement_t *stat, struct function_declaration_t *function, int line_number);
 void add_statement_to_hash_table(struct statement_table_t *statement);
 void print_statement_hash_table(struct statement_table_t *stat);
+
+void create_class_hash_table(struct class_list_t *class_list);
 
 int is_real(char *id);
 int is_boolean(char *id);

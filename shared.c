@@ -10,8 +10,11 @@
 /* Global head to the attribute hash table */
 struct attribute_table_t *attr_hash_table = NULL;
 
-/*Global head to the statement hast table */
+/*Global head to the statement hash table */
 struct statement_table_t *stat_hash_table = NULL;
+
+/*Global head to the class hash table */
+struct class_table_t *class_hash_table = NULL;
 
 
 /* ----------------------------------------------------------------------- 
@@ -658,10 +661,11 @@ struct print_statement_t *set_print_statement(struct variable_access_t *va)
 
 struct program_t *set_program(struct program_heading_t *ph, struct class_list_t *cl)
 {
-    printf("CREATING PROGRAM\n");
     struct program_t *p = new_program();
     p->ph = ph;
     p->cl = cl;
+    create_class_hash_table(cl);
+    p->class_hash_table = class_hash_table;
 
     return p;   
 }
@@ -1112,6 +1116,14 @@ struct while_statement_t *set_while_statement(struct expression_t *e, struct sta
 /* Helper method implemenatations (Hello again Dr. Bazzi) */
 ////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////
+void create_class_hash_table(struct class_list_t *class_list)
+{
+    while(class_list != NULL)
+    {
+        // add_class_to_cht(class_list->)
+    }
+}
+
 
 void create_statement_hash_table(struct func_declaration_list_t *func_dec_list)
 {
@@ -1135,8 +1147,6 @@ void add_statement_list_to_sht(struct function_declaration_t *func_dec)
         stat_seq = stat_seq->next;
     }
 }
-
-
 
 void create_attribute_hash_table(struct func_declaration_list_t *func_dec_list, struct variable_declaration_list_t *var_dec_list)
 {
