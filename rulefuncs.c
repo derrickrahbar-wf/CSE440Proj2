@@ -1091,22 +1091,27 @@ struct expression_data_t *new_expression_data()
 
 
 
-void assign_missing_extend(struct class_list_t *class_list, struct class_identification_t *class_name)
+void assign_missing_extend(struct class_list_t *class_list)
 {
-  while(class_list != NULL)
-  {
-    struct class_identification_t *current_class = class_list->ci;
-    
-    if(current_class->extend != NULL && 
-       current_class->extend->extend_class== NULL && 
-       strcmp(current_class->extend->id, class_name->id) == 0)
+    struct class_list_t *cl_head = class_list;
+    while(class_list != NULL)
     {
-      current_class->extend->extend_class = class_list;
-      printf("FOUND PREVIOUSLY UNDECLARED EXTEND: %s\n", class_name->id);
+        check_for_children(class_list, cl_head);
+        class_list = class_list->next;
     }
 
-    class_list = class_list->next;
-  }
+}
+
+void check_for_children(struct class_list_t *parent, struct class_list_t *cl_head)
+{
+    while(cl_head != NULL)
+    {
+        if(cl_head->ci->extend != NULL && !strcmp(cl_head->ci->extend->id, parent->ci->id))
+        {
+            cl_head->ci->extend->extend_class = parent;
+        }
+        cl_head = cl_head->next;
+    }
 }
 
 /*
@@ -1136,7 +1141,7 @@ void check_for_extend(struct class_list_t *class_list, struct class_identificati
         {
             //this is the class that our class is extending
             class_name->extend->extend_class = class_list;
-            printf("FOUND EXTENDING CLASS\n"); 
+            printf("FOUND EXTENDING CLASS of :%s with parent_class: %s\n", class_name->id, class_name->extend->extend_class->ci->id); 
             return;
         }
 

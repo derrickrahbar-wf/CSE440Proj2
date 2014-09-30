@@ -162,9 +162,7 @@ identifier_list : identifier_list comma identifier
 
 class_list: class_list class_identification PBEGIN class_block END
 	{
-        check_class_duplicate($1, $2);
         check_for_extend($1, $2);
-        assign_missing_extend($1, $2);
         $$ = set_class_list($2, $4, $1);
 	}
  | class_identification PBEGIN class_block END
@@ -188,7 +186,6 @@ class_block:
  func_declaration_list
 	{
         $$ = set_class_block($1, $2);
-        printf("finished class_block method (should have attr table)\n");
 	}
  ;
 

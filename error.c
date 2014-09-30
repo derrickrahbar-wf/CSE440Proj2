@@ -42,7 +42,6 @@ void error_check_not_null(char **str)
 }
 
 
-
 /* ----------------------------------------------------------------------- 
  * Outputs an error message if an impossible/defective state was reached
  * ----------------------------------------------------------------------- 
@@ -95,6 +94,31 @@ void error_type_already_defined(int line_number, char *t, int line_number_prev)
   error(line_number, e);
 }
 
+
+void error_circular_extends(int line_number, char *id, char *p_id)
+{
+  char *e;
+
+  e = (char *) malloc(MAX_ERROR_SIZE);
+  CHECK_MEM_ERROR(e)
+
+  error_check_not_null(&id);
+  error_check_not_null(&p_id);
+  sprintf(e, "Circular extend declaration exists with classes \"%s\", \"%s\", on line number: %d", id, p_id, line_number);
+  error(line_number, e);
+}
+
+void error_extends_itself(int line_number, char *id)
+{
+  char *e;
+
+  e = (char *) malloc(MAX_ERROR_SIZE);
+  CHECK_MEM_ERROR(e)
+
+  error_check_not_null(&id);
+  sprintf(e, "Class \"%s\" cannot extend itself, on line number: %d", id, line_number);
+  error(line_number, e);
+}
 
 
 /* ----------------------------------------------------------------------- 

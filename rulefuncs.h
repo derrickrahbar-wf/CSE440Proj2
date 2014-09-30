@@ -90,12 +90,14 @@ struct program_heading_t *new_program_heading();
 struct expression_data_t *new_expression_data();
 
 ///USER DEFINED
-void assign_missing_extend(struct class_list_t *class_list, struct class_identification_t *class_name);
+void assign_missing_extend(struct class_list_t *class_list);
 void check_class_duplicate(struct class_list_t *class_list, struct class_identification_t *class_name);
 void check_for_extend(struct class_list_t *class_list, struct class_identification_t *class_name);
 void check_for_class(char *id);
 void check_var_duplicate(struct variable_declaration_list_t *var_dec_list, struct variable_declaration_t *var_dec);
 void check_id_duplicate(struct identifier_list_t *id_list,char *id, int line_number);
 int is_prim_data_type(char *id);
+void check_for_children(struct class_list_t *parent, struct class_list_t *cl_head);
+
 #endif
 

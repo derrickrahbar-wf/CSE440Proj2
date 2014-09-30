@@ -616,6 +616,9 @@ struct class_table_t* create_class_node(struct class_list_t *class_list);
 void add_class_to_cht(struct class_list_t *class_list);
 struct class_table_t* find_hash_object(struct class_extend_t *class_list);
 void print_class_hash_table(struct class_table_t* class_table);
+void check_extend_attributes(struct class_list_t *base_class, struct class_list_t *parent_class);
+void check_id_against_var_dec_list(char *id, struct class_list_t *parent_class, int line_number);
+
 
 void create_class_hash_table(struct class_list_t *class_list);
 

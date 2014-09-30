@@ -1,6 +1,6 @@
 program test;
 
-class testFunctionCallArgArray
+class testFunctionCallArgArray extends tes
 
 BEGIN
    
@@ -10,7 +10,7 @@ BEGIN
 
 FUNCTION tester(value	: integer): integer;
 VAR
-    retval : integer;
+    integer : integer;
 BEGIN
    PRINT value[6]
 END;
@@ -28,7 +28,7 @@ class tes
 BEGIN
 
    VAR object : main;
-
+   
 FUNCTION tes(value : integer): integer;
 BEGIN
     object := 1;

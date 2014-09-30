@@ -211,6 +211,7 @@ struct class_identification_t *set_class_identification(char *id, char *extend, 
       ci->extend = new_class_extend();
       ci->extend->id = (char *)malloc(strlen(extend));
       strcpy(ci->extend->id, extend);
+      printf("class %s has a parent %s\n", ci->id, ci->extend->id);
       //leave pointer to class empty 
     }
 
@@ -661,6 +662,7 @@ struct print_statement_t *set_print_statement(struct variable_access_t *va)
 
 struct program_t *set_program(struct program_heading_t *ph, struct class_list_t *cl)
 {
+    assign_missing_extend(cl);
     find_undefined_extends(cl);
     struct program_t *p = new_program();
     p->ph = ph;
@@ -1334,7 +1336,7 @@ void add_attribute_to_hash_table(struct attribute_table_t *attr, int entity_type
 
 void check_against_reserved_words(char* id, int line_number, int entity_type)
 {
-    if( !(strcmp(id, "this") || strcmp(id, "integer") || strcmp(id, "real") || strcmp(id, "boolean")) )
+    if( !(strcmp(id, "this") && strcmp(id, "integer") && strcmp(id, "real") && strcmp(id, "boolean")) )
     {
         switch(entity_type)
         {
@@ -1414,8 +1416,6 @@ struct statement_table_t* create_statement_node(struct statement_t *stat, struct
     strcat(key, (char *)statement->statement_data);
 
     strcpy(statement->string_key, key);
-
-    printf("and this is the sketchy key: %s\n", statement->string_key);
 
     return statement;
 }
@@ -1503,8 +1503,53 @@ void find_undefined_extends(struct class_list_t *class_list)
             {
                 error_type_not_defined(class_list->ci->line_number, class_list->ci->extend->id);
             }
+            else if(class_list->ci->extend->extend_class->ci->extend != NULL && 
+                    !strcmp(class_list->ci->id, class_list->ci->extend->extend_class->ci->extend->id))
+            {
+                error_circular_extends(class_list->ci->line_number, class_list->ci->id, class_list->ci->extend->id);
+            }
+            else
+            {
+                check_extend_attributes(class_list, class_list->ci->extend->extend_class);
+            }
         }
         class_list = class_list->next;
+    }
+}
+
+void check_extend_attributes(struct class_list_t *base_class, struct class_list_t *parent_class)
+{
+    struct variable_declaration_list_t *var_dec_list = base_class->cb->vdl;
+    struct identifier_list_t *id_list;
+
+    while(var_dec_list != NULL)
+    {
+        id_list = var_dec_list->vd->il;
+        while(id_list != NULL)
+        {
+            check_id_against_var_dec_list(id_list->id, parent_class, var_dec_list->vd->line_number);
+            id_list = id_list->next;
+        }
+        var_dec_list = var_dec_list->next;
+    }
+}
+
+void check_id_against_var_dec_list(char *id, struct class_list_t *parent_class, int line_number)
+{
+    struct variable_declaration_list_t *var_dec_list = parent_class->cb->vdl;
+    struct identifier_list_t *id_list;
+    while(var_dec_list != NULL)
+    {
+        id_list = var_dec_list->vd->il;
+        while(id_list != NULL)
+        {
+            if(!strcmp(id, id_list->id))
+            {
+                error_variable_name_invalid(line_number, id);
+            }
+            id_list = id_list->next;
+        }
+        var_dec_list = var_dec_list->next;
     }
 }
 

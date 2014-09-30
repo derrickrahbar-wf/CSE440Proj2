@@ -48,6 +48,8 @@ void error_variable_name_reserved_for_function_return_value(int line_number, cha
 void error_cannot_set_return_value_on_right_hand_side(int line_number, char *v);
 void error_function_return_value_not_set(int line_number, char *f);
 void error_array_index_is_not_integer(int line_number, char *v);
+void error_circular_extends(int line_number, char *id, char *p_id);
+void error_extends_itself(int line_number, char *id);
 
 
 
