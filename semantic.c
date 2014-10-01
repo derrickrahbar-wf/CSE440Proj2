@@ -842,7 +842,7 @@ struct expression_data_t* evaluate_va_function_var(char *id,
 struct expression_data_t* evaluate_va_class_var(char *id, struct attribute_table_t *attr_hash_table, int line_number)
 {
     HASH_FIND_STR(attr_hash_table, create_attribute_key(id, SCOPE_NFV, NULL), attr_ptr);
-    if(attr_ptr != NULL)
+    if(attr_ptr != NULL && !attr_ptr->is_func)
     {
         return convert_td_to_expr_data(attr_ptr->type, attr_ptr->expr, line_number);
     }
