@@ -478,21 +478,7 @@ struct expression_data_t* get_func_des_expr_data(struct function_designator *fun
 
 int structurally_equivalent(struct expression_data_t *expr_1, struct expression_data_t *expr_2)
 {
-    if(expr_1->val > 0 && expr_2->val > 0)
-    {
-        if(expr_1->val == expr_2->val)
-        {
-            return TRUE;
-        }
-        else
-        {
-            return FALSE;
-        }
-    }
-    else
-    {
-        return check_for_equivalence(expr_1, expr_2);
-    }
+    return check_for_equivalence(expr_1, expr_2);
 }
 
 int check_for_equivalence(struct expression_data_t expr_1, struct expression_data_t expr_2)
@@ -655,7 +641,46 @@ int check_class_equivalence(struct expression_data_t expr_1, struct expression_d
     return TRUE;
 }
 
-int formal_param_lists_equal(struct)
+int formal_param_lists_equal(struct formal_parameter_section_list_t *fpl_1, struct formal_parameter_section_list_t *fpl_2)
+{
+    while(fpl_1 != NULL && fpl_2 != NULL)
+    {
+        if(!formal_param_section_equal(fpl_1->fps, fpl_2->fps))
+        {
+            return FALSE;
+        }
+        fpl_1 = fpl_1->next;
+        fpl_2 = fpl_2->next;
+    }
+    if(fpl_1 != NULL || fpl_2 != NULL)
+    {
+        return FALSE;
+    }
+    return TRUE;
+}
+
+int formal_param_section_equal(struct formal_parameter_section_t *fps_1, struct formal_parameter_section_t *fps_2)
+{
+    if(strcmp(fps_1->id, fps_2->id))
+    {
+        return FALSE;
+    }
+    if(fps_1->is_var != fps_2->is_var)
+    {
+        return FALSE;
+    }
+    /* id list names do not have to be the same (i.e x,y :int is the same as g, b :int) */
+    while(fps_1->il != NULL && fps_2->il != NULL)
+    {
+        fps_1->il =fps_1->il->next;
+        fps_2->il =fps_2->il->next;
+    }
+    if(fps_1->il != NULL || fps_2->il != NULL)
+    {
+        return FALSE;
+    }
+    return TRUE;
+}
 
 int check_array_equivalence(struct expression_data_t expr_1, struct expression_data_t expr_2)
 {
