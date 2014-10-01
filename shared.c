@@ -1240,7 +1240,11 @@ void add_statement_to_hash_table(struct statement_table_t *statement)
 
 void add_attribute_to_hash_table(struct attribute_table_t *attr, int entity_type)
 {
-    check_against_reserved_words(attr->id, attr->line_number, entity_type);
+    if(check_against_reserved_words(attr->id, attr->line_number, entity_type))
+    {
+        return; /*this was a reserved word*/
+    }
+
     struct attribute_table_t *item_ptr = NULL;
     
     HASH_FIND_STR(attr_hash_table, attr->string_key, item_ptr);
@@ -1256,7 +1260,7 @@ void add_attribute_to_hash_table(struct attribute_table_t *attr, int entity_type
 
 int check_against_reserved_words(char* id, int line_number, int entity_type)
 {
-    if( !(strcmp(id, "this") && strcmp(id, "integer") && strcmp(id, "real") && strcmp(id, "boolean") && strmp(id, "true") && strcmp(id, "false")) )
+    if( !(strcmp(id, "this") && strcmp(id, "integer") && strcmp(id, "real") && strcmp(id, "boolean") && strcmp(id, "true") && strcmp(id, "false")) )
     {
         switch(entity_type)
         {
@@ -1492,7 +1496,7 @@ struct class_table_t* find_hash_object(struct class_extend_t *class_list)
 void check_class_constructors(struct class_table_t *class_hash_table)
 {
     struct class_table_t *c;
-    struct class_attribute_t *attr_ptr;
+    struct attribute_table_t *attr_ptr;
     for(c=class_hash_table; c != NULL; c=c->hh.next)
     {
 
@@ -1556,11 +1560,11 @@ struct expression_data_t* check_real_or_integer(struct expression_data_t *expr_1
     {
         if(!is_integer(expr_1->type) && !is_real(expr_1->type))
         {
-            error_datatype_is_not(line_number, "integer or real");
+            error_datatype_is_not(line_number, expr_1->type, "integer or real");
         }
         if(!is_integer(expr_2->type) && !is_real(expr_2->type))
         {
-            error_datatype_is_not(line_number, "integer or real");
+            error_datatype_is_not(line_number, expr_2->type, "integer or real");
         }
     }
     return set_expression_data(EXPRESSION_DATA_INTEGER, "integer");
@@ -1570,11 +1574,11 @@ struct expression_data_t* check_boolean(struct expression_data_t *expr_1, struct
 {
     if(!is_boolean(expr_1->type))
     {
-        error_datatype_is_not(line_number, "boolean");
+        error_datatype_is_not(line_number, expr_1->type, "boolean");
     }
     if(!is_boolean(expr_2->type))
     {
-        error_datatype_is_not(line_number, "boolean");
+        error_datatype_is_not(line_number, expr_2->type, "boolean");
     }
     return set_expression_data(EXPRESSION_DATA_BOOLEAN, "boolean");
 }
@@ -1610,15 +1614,15 @@ void validate_type_denoter(struct type_denoter_t *td, struct class_table_t *clas
         case TYPE_DENOTER_T_IDENTIFIER:
             break;
         case TYPE_DENOTER_T_ARRAY_TYPE:
-            validate_type_denoter(td->data.at->td);
+            validate_type_denoter(td->data.at->td, class_hash_table, line_number);
             break;
         case TYPE_DENOTER_T_CLASS_TYPE:
-            check_for_class_existence(td->name, line_number, class_hash_table);
+            check_for_class_existence(td->name, class_hash_table, line_number);
             break;
     }
 }
 
-void check_for_class_existence(char *id, int line_number, struct class_table_t *class_hash_table)
+void check_for_class_existence(char *id, struct class_table_t *class_hash_table, int line_number)
 {
     struct class_table_t *class_ptr = NULL;
     HASH_FIND_STR(class_hash_table, id, class_ptr);
@@ -1705,6 +1709,16 @@ int is_array(char *id)
     return !(strcmp(id, "array"));
 }
 
+int is_true(char *id)
+{
+    return !(strcmp(id, "true"));
+}
+
+int is_false(char *id)
+{
+    return !(strcmp(id, "false"));
+}
+
 
 struct expression_data_t* identify_primitive_data(char *id)
 {
@@ -1722,6 +1736,7 @@ struct expression_data_t* identify_primitive_data(char *id)
     }
     error_unknown(-1);
     exit_on_errors();
+    return NULL;
 }
 
 /* -----------------------------------------------------------------------
@@ -1729,6 +1744,7 @@ struct expression_data_t* identify_primitive_data(char *id)
  * ----------------------------------------------------------------------- 
  */
 
+void exit_on_errors()
 {
   if (error_flag == 1) {
     printf("Errors detected. Exiting.\n");

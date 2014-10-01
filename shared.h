@@ -535,7 +535,7 @@ struct variable_declaration_list_t *set_variable_declaration_list(struct variabl
 struct while_statement_t *set_while_statement(struct expression_t *e, struct statement_t *s);
 struct expression_data_t* identify_primitive_data(char *id);
 void check_for_same_name_vars(char *class_id, struct attribute_table_t *attr_hash_table);
-void check_for_class_existence(char *id, struct class_table_t *class_hash_table int line_number);
+void check_for_class_existence(char *id, struct class_table_t *class_hash_table, int line_number);
 void validate_type_denoter(struct type_denoter_t *td, struct class_table_t *class_hash_table, int line_number);
 
 
@@ -601,20 +601,20 @@ int add_class_funcs_to_aht(struct func_declaration_list_t *func_dec_list, struct
 struct type_denoter_t* generate_type_denoter(char* return_type);
 void add_attribute_to_hash_table(struct attribute_table_t *attr, int entity_type);
 void attribute_hash_table_error(struct attribute_table_t *item_ptr, struct attribute_table_t *failed_attr);
-struct attribute_key_t* create_attribute_key(char *id, int scope, struct function_declaration_t *function);
-int add_class_attrs_to_aht(struct variable_declaration_list_t *var_dec_list, int type, struct function_declaration_t *dummy_func_dec, int order);
+int add_class_attrs_to_aht(struct variable_declaration_list_t *var_dec_list, int type, struct function_declaration_t *dummy_func_dec);
 int parse_var_dec(struct variable_declaration_t *var_dec, int scope, struct function_declaration_t *func, int order);
 void parse_param_section(struct formal_parameter_section_t *param_section, int scope, struct function_declaration_t *func);
 void add_func_var_to_aht(struct variable_declaration_list_t *var_dec_list, int scope, struct function_declaration_t *func);
 
-void check_against_reserved_words(char* id, int line_number, int entity_type);
+int check_against_reserved_words(char* id, int line_number, int entity_type);
 struct attribute_table_t* create_attribute_node(char* id,
                                                 struct type_denoter_t *type,
                                                 int line_number, 
                                                 int scope, 
                                                 int is_func, 
                                                 struct formal_parameter_section_list_t *params, 
-                                                struct function_declaration_t *function);
+                                                struct function_declaration_t *function,
+                                                int order);
 
 
 
@@ -641,7 +641,7 @@ void check_class_constructors(struct class_table_t *class_hash_table);
 struct expression_data_t* check_real_or_integer(struct expression_data_t *expr_1, struct expression_data_t *expr_2, int line_number);
 struct expression_data_t* check_boolean(struct expression_data_t *expr_1, struct expression_data_t *expr_2, int line_number);
 
-
+void validate_class_attribute_types(struct class_table_t *class_hash_table);
 void create_class_hash_table(struct class_list_t *class_list);
 
 int is_real(char *id);
@@ -649,6 +649,8 @@ int is_boolean(char *id);
 int is_integer(char *id);
 int is_array(char *id);
 void exit_on_errors();
+int is_true(char *id);
+int is_false(char *id);
 
 
 

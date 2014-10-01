@@ -32,7 +32,7 @@ BEGIN
 FUNCTION tes(value : integer): integer;
 BEGIN
     object := 1;
-    print object 
+    object.bed.ced.eed[0].yee.xee := xee + 3 + eey 
 END
 
 END

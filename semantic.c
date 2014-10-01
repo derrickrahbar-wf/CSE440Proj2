@@ -59,7 +59,11 @@ void validate_assignment_statement(struct statement_table_t* statement,
 
     if(a_stat->va->type == VARIABLE_ACCESS_T_IDENTIFIER)
     {
-        if(!strcmp(a_stat->data.id, statement_func->fh->id))
+        if(is_true(a_stat->va->data.id) || is_false(a_stat->va->data.id))
+        {
+            error_datatype_is_not(statement->line_number, "boolean", "variable");
+        }
+        if(!strcmp(a_stat->va->data.id, statement_func->fh->id))
         {
             if(a_stat->e != NULL)
             {
@@ -75,8 +79,8 @@ void validate_assignment_statement(struct statement_table_t* statement,
             }
             else
             {
-                struct expression_data_t *obj_inst_type = get_obj_inst_expr_data(a_stat->oe, attr_hash_table, statement_func, statement->line_number);
-                if(structurally_equivalent(set_expression_data(-1, statement_func->fh->res), obj_type->type))
+                struct expression_data_t *obj_type = get_obj_inst_expr_data(a_stat->oe, attr_hash_table, statement_func, statement->line_number);
+                if(structurally_equivalent(set_expression_data(-1, statement_func->fh->res), obj_type))
                 {
                     return;
                 }
@@ -97,7 +101,7 @@ void validate_assignment_statement(struct statement_table_t* statement,
 
         if(!structurally_equivalent(va_type, expr_type)) /*types are different*/
         {
-            error_type_mismatch(statement->line_number, va_type, expr_type);
+            error_type_mismatch(statement->line_number, va_type->type, expr_type->type);
         }
     }
     else /*has an object_instantiation*/
@@ -106,13 +110,13 @@ void validate_assignment_statement(struct statement_table_t* statement,
 
         if(!structurally_equivalent(va_type, obj_inst_type)) /*types are different*/
         {
-            error_type_mismatch(statement->line_number, va_type, obj_inst_type);
+            error_type_mismatch(statement->line_number, va_type->type, obj_inst_type->type);
         }
 
     }
 }
 
-void validate_statement_sequence(struct statement_table_t* statement
+void validate_statement_sequence(struct statement_table_t* statement,
                                  struct attribute_table_t* attr_hash_table, 
                                  struct function_declaration_t *statement_func)
 {
@@ -135,7 +139,7 @@ void validate_if_statement(struct statement_table_t* statement,
 
     if(strcmp("boolean", expr_type->type)) /*expression is not boolean*/
     {
-        error_datatype_is_not(statement->line_number, expr_type, "boolean");
+        error_datatype_is_not(statement->line_number, expr_type->type, "boolean");
     }
     
     /*validate both statements */
@@ -232,7 +236,7 @@ struct expression_data_t* get_expr_expr_data(struct expression_t *expr,
 {
     if(expr->expr != NULL && expr->expr->type != NULL)
     {
-        return expr->expr->type; /*we already have type*/
+        return expr->expr; /*we already have type*/
     }
     else if(expr->se2 == NULL) /* if se2 is null then the expression type is the type of se1 */
     {
@@ -282,6 +286,7 @@ struct expression_data_t* get_obj_inst_expr_data(struct object_instantiation_t *
     {
         error_type_not_defined(line_number, obj_inst->id);
         exit_on_errors();
+        return NULL;
     }
     else
     {
@@ -308,7 +313,6 @@ struct expression_data_t* get_va_expr_data(struct variable_access_t* va,
                                            struct function_declaration_t *func, 
                                            int line_number)
 {
-    struct expression_data_t *va_expr;
     switch(va->type)
     {
         case VARIABLE_ACCESS_T_IDENTIFIER:
@@ -324,6 +328,9 @@ struct expression_data_t* get_va_expr_data(struct variable_access_t* va,
             return evaluate_va_method_designator(va, attr_hash_table, func, line_number);
             break;
     }
+    error_unknown(line_number);
+    exit_on_errors();
+    return NULL;
 }
 
 struct expression_data_t* get_simple_expr_expr_data(struct simple_expression_t *simple_expression, 
@@ -356,6 +363,9 @@ struct expression_data_t* get_simple_expr_expr_data(struct simple_expression_t *
                 return check_boolean(se, term, line_number);
                 break;
         }
+        error_unknown(line_number);
+        exit_on_errors();
+        return NULL;
     }
 
 }
@@ -369,7 +379,7 @@ struct expression_data_t* get_term_expr_data(struct term_t *term,
     {
         return term->expr;
     }
-    struct expression_data_t *factor = get_factor_expr_data(term->f, attribute_table_t, statement_func, line_number);
+    struct expression_data_t *factor = get_factor_expr_data(term->f, attr_hash_table, statement_func, line_number);
     if(term->next == NULL)
     {
         return factor;
@@ -386,11 +396,11 @@ struct expression_data_t* get_term_expr_data(struct term_t *term,
             case MULOP_MOD:
                 if(!is_integer(sub_term->type))
                 {
-                    error_datatype_is_not(line_number, "integer");
+                    error_datatype_is_not(line_number, sub_term->type, "integer");
                 }
                 if(!is_integer(factor->type))
                 {
-                    error_datatype_is_not(line_number, "integer");
+                    error_datatype_is_not(line_number, sub_term->type, "integer");
                 }
                 return set_expression_data(EXPRESSION_DATA_INTEGER, "integer");
                 break;
@@ -398,6 +408,9 @@ struct expression_data_t* get_term_expr_data(struct term_t *term,
                 return check_boolean(sub_term, factor, line_number);
                 break;
         }
+        error_unknown(line_number);
+        exit_on_errors();
+        return NULL;
     }
 }
 
@@ -414,17 +427,20 @@ struct expression_data_t* get_factor_expr_data(struct factor_t *factor,
     {
         /* if it has a sign then it must be an integer or real */
         case FACTOR_T_SIGNFACTOR:
-            if(factor->data.next->type != FACTOR_T_PRIMARY)
+            if(factor->data.f.next->type != FACTOR_T_PRIMARY)
             {
                 error_too_many_signs(line_number);
             }
-            struct expression_data_t *f_expr = get_factor_expr_data(factor->data.next, attr_hash_table, statement_func, line_number);
+            struct expression_data_t *f_expr = get_factor_expr_data(factor->data.f.next, attr_hash_table, statement_func, line_number);
             return check_real_or_integer(f_expr, set_expression_data(EXPRESSION_DATA_INTEGER, "integer"), line_number);
             break;
         case FACTOR_T_PRIMARY:
             return get_primary_expr_data(factor->data.p, attr_hash_table, statement_func, line_number);
             break;
     }
+    error_unknown(line_number);
+    exit_on_errors();
+    return NULL;
 }
 
 struct expression_data_t* get_primary_expr_data(struct primary_t* primary, 
@@ -445,25 +461,27 @@ struct expression_data_t* get_primary_expr_data(struct primary_t* primary,
             return set_expression_data(EXPRESSION_DATA_INTEGER, "integer");
             break;
         case PRIMARY_T_FUNCTION_DESIGNATOR:
-            return get_func_des_expr_data(primary->data.fd, attr_hash_table, line_number);
+            return get_func_des_expr_data(primary->data.fd, attr_hash_table, statement_func, line_number);
             break;
         case PRIMARY_T_EXPRESSION:
             return get_expr_expr_data(primary->data.e, attr_hash_table, statement_func, line_number);           
             break;
         case PRIMARY_T_PRIMARY:
-            struct expression_data_t *sub_primary = get_primary_expr_data(primary->data.p.next, attr_hash_table, statement_func, line_number);
+            // struct primary_t *p_test = primary->data.p->next;
+
+            struct expression_data_t *sub_p = get_primary_expr_data(primary->data.p.next, attr_hash_table, statement_func, line_number);
             return check_boolean(sub_primary, set_expression_data(EXPRESSION_DATA_BOOLEAN, "boolean"), line_number);
             break;
     }
 }
 
-struct expression_data_t* get_func_des_expr_data(struct function_designator *func_des, 
+struct expression_data_t* get_func_des_expr_data(struct function_designator_t *func_des, 
                                                  struct attribute_table_t* attr_hash_table, 
-                                                 struct statement_func, 
+                                                 struct function_declaration_t *statement_func, 
                                                  int line_number)
 {
     struct attribute_table_t* func_ptr = NULL;
-    HASH_FIND_STR(attr_hash_table, create_attribute_key(func_des->id, SCOPE_NFV, NULL), func_ptr));
+    HASH_FIND_STR(attr_hash_table, create_attribute_key(func_des->id, SCOPE_NFV, NULL), func_ptr);
     if(func_ptr != NULL && func_ptr->is_func)
     {
         check_param_list_against_function(func_des->apl, func_ptr->params, func_des->id, attr_hash_table, statement_func, line_number);
@@ -481,7 +499,7 @@ int structurally_equivalent(struct expression_data_t *expr_1, struct expression_
     return check_for_equivalence(expr_1, expr_2);
 }
 
-int check_for_equivalence(struct expression_data_t expr_1, struct expression_data_t expr_2)
+int check_for_equivalence(struct expression_data_t *expr_1, struct expression_data_t *expr_2)
 {
     if(is_primitive(expr_1->type) || is_primitive(expr_2->type))
     {
@@ -494,9 +512,9 @@ int check_for_equivalence(struct expression_data_t expr_1, struct expression_dat
     return check_class_equivalence(expr_1, expr_2);
 }
 
-int check_class_equivalence(struct expression_data_t expr_1, struct expression_data_t expr_2)
+int check_class_equivalence(struct expression_data_t *expr_1, struct expression_data_t *expr_2)
 {
-    if(!strcmp(expr_1->type, expr_2->type));
+    if(!strcmp(expr_1->type, expr_2->type))
     {
         return TRUE;
     }
@@ -682,17 +700,17 @@ int formal_param_section_equal(struct formal_parameter_section_t *fps_1, struct 
     return TRUE;
 }
 
-int check_array_equivalence(struct expression_data_t expr_1, struct expression_data_t expr_2)
+int check_array_equivalence(struct expression_data_t *expr_1, struct expression_data_t *expr_2)
 {
-    if(!is_array(expr_1) || !is_array(expr_2))
+    if(!is_array(expr_1->type) || !is_array(expr_2->type))
     {
         return FALSE;
     }
     
-    struct array_t *a1 = expr_1->array; 
-    struct array_t *a2 = expr_2->array;
+    struct array_type_t *a1 = expr_1->array; 
+    struct array_type_t *a2 = expr_2->array;
 
-    if(a1->min != a2->min || a1->max != a2->max)
+    if(a1->r->min->ui != a2->r->min->ui || a1->r->max->ui != a2->r->max->ui)
     {
         return FALSE;
     }
@@ -739,11 +757,11 @@ void check_param_list_against_function(struct actual_parameter_list_t *apl,
     struct identifier_list_t *id_list;
     while(apl != NULL && fpl != NULL)
     {
-        id_list = fpl->il;
+        id_list = fpl->fps->il;
         while(id_list != NULL && apl != NULL)
         {
             if(!structurally_equivalent(set_expression_data(-1, fpl->fps->id), 
-                get_expr_expr_data(apl->e1, attr_hash_table, statement_func, line_number)))
+                get_expr_expr_data(apl->ap->e1, attr_hash_table, statement_func, line_number)))
             {
                 error_function_not_declared(line_number, id);
                 return;
@@ -760,9 +778,9 @@ void check_param_list_against_function(struct actual_parameter_list_t *apl,
 }
 
 
-int has_this(char *id);
+int has_this(char *id)
 {
-    char *this[5];
+    char this[5];
     strncpy(this, id, 5);
     if(!strcmp(this, "this."))
     {
@@ -790,6 +808,10 @@ struct expression_data_t* evaluate_va_identifier(struct variable_access_t *va,
 {
     struct expression_data_t *va_expr;
     char *id = va->data.id;
+    if(is_true(id) || is_false(id))
+    {
+        return set_expression_data(EXPRESSION_DATA_BOOLEAN, "boolean");
+    }
     if(strlen(id) > 5 && has_this(id))
     {
         id = get_class_id_from_this(id);
@@ -841,6 +863,7 @@ struct expression_data_t* evaluate_va_function_var(char *id,
 
 struct expression_data_t* evaluate_va_class_var(char *id, struct attribute_table_t *attr_hash_table, int line_number)
 {
+    struct attribute_table_t *attr_ptr = NULL;
     HASH_FIND_STR(attr_hash_table, create_attribute_key(id, SCOPE_NFV, NULL), attr_ptr);
     if(attr_ptr != NULL && !attr_ptr->is_func)
     {
@@ -866,7 +889,7 @@ struct expression_data_t* convert_td_to_expr_data(struct type_denoter_t *type, s
             return expr;
             break;
         case TYPE_DENOTER_T_CLASS_TYPE:
-            check_for_class_existence(type->name, line_number, g_class_table_head);
+            check_for_class_existence(type->name, g_class_table_head, line_number);
             expr = set_expression_data(-1, type->name);
             return expr;
             break;
@@ -877,12 +900,12 @@ struct expression_data_t* convert_td_to_expr_data(struct type_denoter_t *type, s
     }
 }
 
-struct expression_data_t *evaluate_va_indexed_var(struct variable_access_t *va, 
+struct expression_data_t *evaluate_va_indexed_var(struct variable_access_t *var, 
                                                   struct attribute_table_t *attr_hash_table,
                                                   struct function_declaration_t *func, 
                                                   int line_number)
 {
-    struct indexed_variable_t *index_var = va->data.iv;
+    struct indexed_variable_t *index_var = var->data.iv;
     
     if(index_var->expr != NULL)
     {
@@ -900,19 +923,19 @@ struct expression_data_t *evaluate_va_indexed_var(struct variable_access_t *va,
     struct expression_data_t *index_expr_type = get_iel_expr_data(index_var->iel, attr_hash_table, func, line_number);
     if(!is_integer(index_expr_type->type))
     {
-        error_datatype_is_not(line, index_expr_type->type, "integer");
+        error_datatype_is_not(line_number, index_expr_type->type, "integer");
     }
 
     /* if index was a single literal, the value will be populated and we can check for bounds */
     if(!strcmp(index_expr_type->type, "VAR"))
     {
-        if(!(va->type->array->r->min <= index_expr_type->val && va->type->array->r->max >= index_expr_type->val))
+        if(!(va->array->r->min->ui <= index_expr_type->val && va->array->r->max->ui >= index_expr_type->val))
         {
-            error_array_index_out_of_bounds(line_number, va->type->array->r->min, va->type->array->r->max);
+            error_array_index_out_of_bounds(line_number, index_expr_type->val, va->array->r->min->ui, va->array->r->max->ui);
         }    
     }
     
-    return convert_td_to_expr_data(va->array->td, va->expr, line_number);
+    return convert_td_to_expr_data(va->array->td, va, line_number);
 }
 
 struct expression_data_t* get_iel_expr_data(struct index_expression_list_t *iel, 
@@ -957,13 +980,13 @@ struct expression_data_t *evaluate_va_method_designator(struct variable_access_t
     struct method_designator_t *meth_des = va->data.md;
     struct expression_data_t *meth_va = get_va_expr_data(meth_des->va, attr_hash_table, func, line_number);
 
-    struct expression_data_t *meth_fd = get_func_des_expr_data(meth_des->fd, get_class_attr_table(meth_va->type, line_number), statement_func, line_number);
+    struct expression_data_t *meth_fd = get_func_des_expr_data(meth_des->fd, get_class_attr_table(meth_va->type, line_number), func, line_number);
 
     return meth_fd;
 
 }
 
-struct attribute_table_t* get_class_attr_table(char *id, int line_number);
+struct attribute_table_t* get_class_attr_table(char *id, int line_number)
 {
     struct class_table_t *class_ptr = NULL;
     HASH_FIND_STR(g_class_table_head, id, class_ptr);
