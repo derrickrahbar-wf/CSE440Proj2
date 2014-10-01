@@ -467,12 +467,22 @@ struct expression_data_t* get_primary_expr_data(struct primary_t* primary,
             return get_expr_expr_data(primary->data.e, attr_hash_table, statement_func, line_number);           
             break;
         case PRIMARY_T_PRIMARY:
-            // struct primary_t *p_test = primary->data.p->next;
-
-            struct expression_data_t *sub_p = get_primary_expr_data(primary->data.p.next, attr_hash_table, statement_func, line_number);
+            make_call(primary, attr_hash_table, statement_func, line_number);
+            struct expression_data_t *sub_primary = make_call(primary, attr_hash_table, statement_func, line_number);
             return check_boolean(sub_primary, set_expression_data(EXPRESSION_DATA_BOOLEAN, "boolean"), line_number);
             break;
     }
+    error_unknown(line_number);
+    exit_on_errors();
+    return NULL;
+}
+
+struct expression_data_t* make_call(struct primary_t* primary, 
+                                                struct attribute_table_t* attr_hash_table, 
+                                                struct function_declaration_t *statement_func,
+                                                int line_number)
+{
+    return get_primary_expr_data(primary->data.next, attr_hash_table, statement_func, line_number);
 }
 
 struct expression_data_t* get_func_des_expr_data(struct function_designator_t *func_des, 
@@ -491,6 +501,7 @@ struct expression_data_t* get_func_des_expr_data(struct function_designator_t *f
     {
         error_function_not_declared(line_number, func_des->id);
         exit_on_errors();
+        return NULL;
     }
 }
 
@@ -841,6 +852,7 @@ struct expression_data_t* evaluate_va_identifier(struct variable_access_t *va,
 
     error_variable_not_declared(line_number, id);
     exit_on_errors();
+    return NULL;
 }
 
 struct expression_data_t* evaluate_va_function_var(char *id, 
@@ -898,6 +910,9 @@ struct expression_data_t* convert_td_to_expr_data(struct type_denoter_t *type, s
             return expr;
             break;
     }
+    error_unknown(line_number);
+    exit_on_errors();
+    return NULL;
 }
 
 struct expression_data_t *evaluate_va_indexed_var(struct variable_access_t *var, 

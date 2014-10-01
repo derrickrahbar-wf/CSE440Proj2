@@ -833,19 +833,6 @@ struct primary_t *new_primary()
  return p;
 }
 
-struct primary_data_t *new_primary_data()
-{
-  struct primary_data_t *pd;
-
-  pd = (struct primary_data_t *) malloc(sizeof(struct primary_data_t));
-  CHECK_MEM_ERROR(pd);
-  pd->not = -1;
-  pd->next = NULL;
-
-  return pd;
-}
-
-
 
 /* ----------------------------------------------------------------------- 
  * Returns a pointer to a new unsigned_number

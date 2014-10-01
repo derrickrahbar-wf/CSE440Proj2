@@ -148,5 +148,10 @@ struct expression_data_t *evaluate_va_method_designator(struct variable_access_t
 
 struct attribute_table_t* get_class_attr_table(char *id, int line_number);
 
+struct expression_data_t* make_call(struct primary_t* primary, 
+                                                struct attribute_table_t* attr_hash_table, 
+                                                struct function_declaration_t *statement_func,
+                                                int line_number);
+
 
 #endif /* SEMANTIC_H */

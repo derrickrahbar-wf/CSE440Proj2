@@ -557,7 +557,7 @@ struct primary_t* set_primary_t_primary(struct primary_t *p, int line_number)
     /*This must be a boolean type because this was preset with a NOT*/
     struct primary_t *pr = new_primary();
     pr->type = PRIMARY_T_PRIMARY;
-    pr->data.p = *(set_primary_data(p));
+    pr->data.next = p;
 
     if(p->expr != NULL)
     {
@@ -582,14 +582,6 @@ struct primary_t* set_primary_t_primary(struct primary_t *p, int line_number)
 
 ////////////////////////////////////////////////////////////////////////////////////////
 
-struct primary_data_t* set_primary_data(struct primary_t *next)
-{
-    struct primary_data_t *pd = new_primary_data();
-    pd->not = 1;
-    pd->next = next;
-
-    return pd;
-}
 
 struct print_statement_t *set_print_statement(struct variable_access_t *va)
 {

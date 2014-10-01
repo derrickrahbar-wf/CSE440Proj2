@@ -258,10 +258,7 @@ struct primary_t{
     struct unsigned_number_t *un; /* == unsigned_constant */
     struct function_designator_t *fd;
     struct expression_t *e;
-    struct primary_data_t{
-      int not;
-      struct primary_t *next;
-    }p;
+    struct primary_t *next;
   }data;
   struct expression_data_t *expr;
 };
@@ -502,7 +499,7 @@ struct index_expression_list_t *set_index_expression_list(struct expression_t *e
 struct indexed_variable_t *set_indexed_variable(struct variable_access_t *va, struct index_expression_list_t *iel, int line_number);
 struct method_designator_t *set_method_designator(struct variable_access_t *va, struct function_designator_t *fd, int line_number);
 struct object_instantiation_t *set_object_instantiation(char *id, struct actual_parameter_list_t *apl);
-struct primary_data_t* set_primary_data(struct primary_t *next);
+
 struct primary_t* set_primary_t_expression(struct expression_t *e);
 struct primary_t* set_primary_t_function_designator(struct function_designator_t *fd);
 struct primary_t* set_primary_t_primary(struct primary_t *p, int line_number);
