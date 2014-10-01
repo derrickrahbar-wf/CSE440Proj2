@@ -129,6 +129,12 @@ struct array_type_t{
   struct type_denoter_t *td;
 };
 
+  union type_data_union {
+    struct array_type_t *at;
+    struct class_list_t *cl;
+    char *id;
+  };
+
 #define TYPE_DENOTER_T_ARRAY_TYPE 1
 #define TYPE_DENOTER_T_CLASS_TYPE 2
 #define TYPE_DENOTER_T_IDENTIFIER 3
@@ -138,12 +144,9 @@ struct type_denoter_t{
 	     * 3 - base_type (integer, real, boolean)
 	     */
   char *name;
-  union {
-    struct array_type_t *at;
-    struct class_list_t *cl;
-    char *id;
-  }data;
+  union type_data_union data;
 };
+
 
 /* ---------------------------------------------------------------- */
 
@@ -629,7 +632,7 @@ void find_undefined_extends(struct class_list_t *class_list);
 void add_class_to_hash_table(struct class_table_t *class);
 struct class_table_t* create_class_node(struct class_list_t *class_list);
 void add_class_to_cht(struct class_list_t *class_list);
-struct class_table_t* find_hash_object(struct class_extend_t *class_list);
+struct class_table_t* find_hash_object(char *class_list);
 void print_class_hash_table(struct class_table_t* class_table);
 void check_extend_attributes(struct class_list_t *base_class, struct class_list_t *parent_class);
 void check_id_against_var_dec_list(char *id, struct class_list_t *parent_class, int line_number);
@@ -640,6 +643,7 @@ struct expression_data_t* check_boolean(struct expression_data_t *expr_1, struct
 
 void validate_class_attribute_types(struct class_table_t *class_hash_table);
 void create_class_hash_table(struct class_list_t *class_list);
+void check_for_class_program(char* id, struct class_table_t *c);
 
 int is_real(char *id);
 int is_boolean(char *id);

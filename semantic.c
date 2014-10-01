@@ -101,6 +101,15 @@ void validate_assignment_statement(struct statement_table_t* statement,
 
         if(!structurally_equivalent(va_type, expr_type)) /*types are different*/
         {
+            struct class_table_t *class_check = NULL;
+            HASH_FIND_STR(g_class_table_head, va_type->type, class_check);
+            if(class_check != NULL)
+            {
+                if(class_check->extend != NULL && !strcmp(class_check->extend->id, expr_type->type))
+                {
+                    return;
+                }
+            }
             error_type_mismatch(statement->line_number, va_type->type, expr_type->type);
         }
     }
@@ -110,6 +119,15 @@ void validate_assignment_statement(struct statement_table_t* statement,
 
         if(!structurally_equivalent(va_type, obj_inst_type)) /*types are different*/
         {
+           struct class_table_t *class_check = NULL;
+            HASH_FIND_STR(g_class_table_head, va_type->type, class_check);
+            if(class_check != NULL)
+            {
+                if(class_check->extend != NULL && !strcmp(class_check->extend->id, obj_inst_type->type))
+                {
+                    return;
+                }
+            }
             error_type_mismatch(statement->line_number, va_type->type, obj_inst_type->type);
         }
 
@@ -667,6 +685,14 @@ int check_class_equivalence(struct expression_data_t *expr_1, struct expression_
         }
 
     }
+    if(ect_1->extend != NULL && ect_2->extend != NULL)
+    {
+        return structurally_equivalent(set_expression_data(-1, ect_1->extend->id), set_expression_data(-1, ect_2->extend->id));
+    }
+    if(ect_1->extend != NULL || ect_2->extend != NULL)
+    {
+        return FALSE;
+    }
     return TRUE;
 }
 
@@ -721,7 +747,7 @@ int check_array_equivalence(struct expression_data_t *expr_1, struct expression_
     struct array_type_t *a1 = expr_1->array; 
     struct array_type_t *a2 = expr_2->array;
 
-    if(a1->r->min->ui != a2->r->min->ui || a1->r->max->ui != a2->r->max->ui)
+    if( (a1->r->max->ui - a1->r->min->ui) !=  (a2->r->max->ui - a2->r->min->ui))
     {
         return FALSE;
     }
@@ -755,6 +781,10 @@ int is_primitive(char *id)
 
 int check_primitive_equivalence(char *t1, char *t2)
 {
+    if(is_integer(t1) && is_integer(t2))
+    {
+        return TRUE;
+    }
     return !strcmp(t1, t2);
 }
 
@@ -921,7 +951,7 @@ struct expression_data_t *evaluate_va_indexed_var(struct variable_access_t *var,
                                                   int line_number)
 {
     struct indexed_variable_t *index_var = var->data.iv;
-    
+
     if(index_var->expr != NULL)
     {
         return index_var->expr;
@@ -949,8 +979,7 @@ struct expression_data_t *evaluate_va_indexed_var(struct variable_access_t *var,
             error_array_index_out_of_bounds(line_number, index_expr_type->val, va->array->r->min->ui, va->array->r->max->ui);
         }    
     }
-    
-    return convert_td_to_expr_data(va->array->td, va, line_number);
+    return convert_td_to_expr_data(va->array->td, NULL, line_number);
 }
 
 struct expression_data_t* get_iel_expr_data(struct index_expression_list_t *iel, 

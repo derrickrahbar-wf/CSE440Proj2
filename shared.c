@@ -196,8 +196,8 @@ struct class_block_t *set_class_block(struct variable_declaration_list_t *vdl, s
     stat_hash_table = NULL; /*set global head back to null for next class */
 
     /* FOR DEBUGGING */
-    print_hash_table(cb->attribute_hash_table);
-    print_statement_hash_table(cb->statement_hash_table);
+    // print_hash_table(cb->attribute_hash_table);
+    // print_statement_hash_table(cb->statement_hash_table);
 
 
     return cb;
@@ -214,8 +214,6 @@ struct class_identification_t *set_class_identification(char *id, char *extend, 
       ci->extend = new_class_extend();
       ci->extend->id = (char *)malloc(strlen(extend));
       strcpy(ci->extend->id, extend);
-      printf("class %s has a parent %s\n", ci->id, ci->extend->id);
-      //leave pointer to class empty 
     }
 
     ci->line_number = line_number;
@@ -317,7 +315,7 @@ struct factor_t* set_factor_t_sign_factor(int sign, struct factor_t* f, int line
     /*This would need to be a real or an integer to have a sign in from of it */
     if(f->expr != NULL)
     {
-        if(strcmp(f->expr->type, "integer") == 0 || strcmp(f->expr->type, "real") == 0)
+        if(is_integer(f->expr->type) || is_real(f->expr->type))
         {
             /*This is a valid type of sign factor*/
             fsf->expr = f->expr;
@@ -603,8 +601,6 @@ struct program_t *set_program(struct program_heading_t *ph, struct class_list_t 
     check_class_constructors(p->class_hash_table);
     validate_class_attribute_types(p->class_hash_table);
 
-    /* DEBUGGING */
-    print_class_hash_table(p->class_hash_table);
     return p;   
 }
 
@@ -1192,7 +1188,7 @@ void add_func_var_to_aht(struct variable_declaration_list_t *var_dec_list, int s
 struct type_denoter_t* generate_type_denoter(char* return_type)
 {
     struct type_denoter_t *type = (struct type_denoter_t*)malloc(sizeof(struct type_denoter_t));
-    if( !(strcmp(return_type, "integer") && strcmp(return_type, "real") && strcmp(return_type, "boolean")) )
+    if( (is_integer(return_type) || is_real(return_type) || is_boolean(return_type)) )
     {
         type->type = TYPE_DENOTER_T_IDENTIFIER;
     }
@@ -1252,7 +1248,7 @@ void add_attribute_to_hash_table(struct attribute_table_t *attr, int entity_type
 
 int check_against_reserved_words(char* id, int line_number, int entity_type)
 {
-    if( !(strcmp(id, "this") && strcmp(id, "integer") && strcmp(id, "real") && strcmp(id, "boolean") && strcmp(id, "true") && strcmp(id, "false")) )
+    if( !(strcmp(id, "this.") && strcmp(id, "integer") && strcmp(id, "real") && strcmp(id, "boolean") && !is_true(id) && !is_false(id)) )
     {
         switch(entity_type)
         {
@@ -1289,7 +1285,13 @@ struct class_table_t* create_class_node(struct class_list_t *class_list)
     
     class->attribute_hash_table = class_list->cb->attribute_hash_table;
     class->statement_hash_table = class_list->cb->statement_hash_table;
-    class->extend = find_hash_object(class_list->ci->extend);
+    if(class_list->ci->extend != NULL)
+    {
+        class->extend = (struct class_table_t*)malloc(sizeof(struct class_table_t));
+        class->extend->id = (char*)malloc(sizeof(char)*strlen(class_list->ci->extend->id));
+        strcpy(class->extend->id, class_list->ci->extend->id);
+    }
+
     class->line_number = class_list->ci->line_number;
     class->class_list = class_list;
     class->class_var_num = class_list->cb->class_var_num;
@@ -1475,12 +1477,12 @@ void check_id_against_var_dec_list(char *id, struct class_list_t *parent_class, 
     }
 }
 
-struct class_table_t* find_hash_object(struct class_extend_t *class_list)
+struct class_table_t* find_hash_object(char *class_list)
 {
     struct class_table_t *item_ptr = NULL;
     if(class_list != NULL)
     {
-        HASH_FIND_STR(class_hash_table, class_list->extend_class->ci->id, item_ptr);
+        HASH_FIND_STR(class_hash_table, class_list, item_ptr);
     }
     return item_ptr;
 }
@@ -1499,8 +1501,10 @@ void check_class_constructors(struct class_table_t *class_hash_table)
             {
                 error_constructor_cannot_have_return_type(attr_ptr->line_number, c->id);
             }
+            attr_ptr->type->name = (char*)malloc(sizeof(char)*strlen(c->id));
             strcpy(attr_ptr->type->name, c->id);
             attr_ptr->type->type = TYPE_DENOTER_T_CLASS_TYPE;
+            attr_ptr->type->data = *((union type_data_union*)malloc(sizeof(struct class_list_t*)));
             attr_ptr->type->data.cl = c->class_list;
         }
     }
@@ -1592,6 +1596,10 @@ void validate_class_attribute_types(struct class_table_t *class_hash_table)
     struct attribute_table_t *a;
     for(c=class_hash_table; c != NULL; c=c->hh.next)
     {
+        if(c->extend != NULL)
+        {  
+            c->extend = find_hash_object(c->extend->id);   
+        }
         for(a=c->attribute_hash_table; a != NULL; a=a->hh.next)
         {
             validate_type_denoter(a->type, class_hash_table, a->line_number);
@@ -1703,12 +1711,36 @@ int is_array(char *id)
 
 int is_true(char *id)
 {
-    return !(strcmp(id, "true"));
+    if(!(strcmp(id, "true")))
+    {
+        return TRUE;
+    }
+    if(!(strcmp(id, "True")))
+    {
+        return TRUE;
+    }
+    if(!(strcmp(id, "TRUE")))
+    {
+        return TRUE;
+    }
+    return FALSE;
 }
 
 int is_false(char *id)
 {
-    return !(strcmp(id, "false"));
+    if(!(strcmp(id, "false")))
+    {
+        return TRUE;
+    }
+    if(!(strcmp(id, "False")))
+    {
+        return TRUE;
+    }
+    if(!(strcmp(id, "FALSE")))
+    {
+        return TRUE;
+    }
+    return FALSE;
 }
 
 

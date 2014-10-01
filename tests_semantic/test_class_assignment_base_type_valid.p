@@ -1,4 +1,4 @@
-program testClassAssignmentBaseTypeValid;
+program testClassAssignment;
 
 class BB
 
@@ -14,7 +14,7 @@ BEGIN
 END
 
 
-class testClassAssignmentBaseTypeValid
+class testClassAssignment
 
 BEGIN
    

@@ -586,17 +586,17 @@ static const yytype_int8 yyrhs[] =
 /* YYRLINE[YYN] -- source line where rule number YYN was defined.  */
 static const yytype_uint16 yyrline[] =
 {
-       0,   134,   134,   141,   145,   151,   157,   163,   170,   176,
-     180,   187,   194,   198,   208,   214,   220,   225,   230,   234,
-     241,   247,   251,   256,   261,   266,   270,   276,   277,   280,
-     286,   292,   296,   302,   306,   312,   314,   321,   328,   331,
-     337,   341,   347,   351,   355,   359,   363,   369,   375,   381,
-     385,   391,   395,   401,   407,   411,   415,   419,   425,   431,
-     435,   441,   443,   449,   456,   462,   466,   472,   476,   480,
-     486,   488,   492,   500,   504,   512,   516,   526,   530,   536,
-     541,   547,   551,   555,   559,   563,   571,   574,   576,   583,
-     589,   593,   597,   603,   607,   611,   615,   621,   625,   629,
-     633,   637,   641,   647,   654,   657
+       0,   134,   134,   141,   145,   151,   157,   163,   168,   174,
+     178,   185,   192,   196,   206,   212,   218,   223,   228,   232,
+     239,   245,   249,   254,   259,   264,   268,   274,   275,   278,
+     284,   290,   294,   300,   304,   310,   312,   319,   326,   329,
+     335,   339,   345,   349,   353,   357,   361,   367,   373,   379,
+     383,   389,   393,   399,   405,   409,   413,   417,   423,   429,
+     434,   440,   442,   448,   455,   461,   465,   471,   476,   480,
+     486,   488,   492,   498,   502,   508,   512,   518,   522,   528,
+     532,   538,   542,   546,   550,   554,   560,   563,   565,   572,
+     578,   582,   586,   592,   596,   600,   604,   610,   614,   618,
+     622,   626,   630,   636,   643,   646
 };
 #endif
 
@@ -1677,50 +1677,48 @@ yyreduce:
   case 7:
 #line 164 "pascal.y"
     {
-        check_class_duplicate((yyvsp[(1) - (5)].cl), (yyvsp[(2) - (5)].ci));
         check_for_extend((yyvsp[(1) - (5)].cl), (yyvsp[(2) - (5)].ci));
-        assign_missing_extend((yyvsp[(1) - (5)].cl), (yyvsp[(2) - (5)].ci));
         (yyval.cl) = set_class_list((yyvsp[(2) - (5)].ci), (yyvsp[(4) - (5)].cb), (yyvsp[(1) - (5)].cl));
 	}
     break;
 
   case 8:
-#line 171 "pascal.y"
+#line 169 "pascal.y"
     {
         (yyval.cl) = set_class_list((yyvsp[(1) - (4)].ci), (yyvsp[(3) - (4)].cb), NULL);
 	}
     break;
 
   case 9:
-#line 177 "pascal.y"
+#line 175 "pascal.y"
     {
         (yyval.ci) = set_class_identification((yyvsp[(2) - (2)].id), NULL, line_number);
 	}
     break;
 
   case 10:
-#line 181 "pascal.y"
+#line 179 "pascal.y"
     {
         (yyval.ci) = set_class_identification((yyvsp[(2) - (4)].id), (yyvsp[(4) - (4)].id), line_number);
 	}
     break;
 
   case 11:
-#line 189 "pascal.y"
+#line 187 "pascal.y"
     {
         (yyval.cb) = set_class_block((yyvsp[(1) - (2)].vdl), (yyvsp[(2) - (2)].fdl));
 	}
     break;
 
   case 12:
-#line 195 "pascal.y"
+#line 193 "pascal.y"
     {       
-        (yyval.tden) = set_type_denoter_array(NULL, (yyvsp[(1) - (1)].at));
+        (yyval.tden) = set_type_denoter_array("array", (yyvsp[(1) - (1)].at));
 	}
     break;
 
   case 13:
-#line 199 "pascal.y"
+#line 197 "pascal.y"
     {
         if(is_prim_data_type((yyvsp[(1) - (1)].id)) == 1)
         {(yyval.tden) = set_type_denoter_id((yyvsp[(1) - (1)].id), (yyvsp[(1) - (1)].id));}
@@ -1731,344 +1729,346 @@ yyreduce:
     break;
 
   case 14:
-#line 209 "pascal.y"
+#line 207 "pascal.y"
     {
         (yyval.at) = set_array_type((yyvsp[(3) - (6)].r), (yyvsp[(6) - (6)].tden));
 	}
     break;
 
   case 15:
-#line 215 "pascal.y"
+#line 213 "pascal.y"
     {
-        (yyval.r) = set_range((yyvsp[(1) - (3)].un), (yyvsp[(3) - (3)].un));
+        (yyval.r) = set_range((yyvsp[(1) - (3)].un), (yyvsp[(3) - (3)].un), line_number);
 	}
     break;
 
   case 16:
-#line 221 "pascal.y"
+#line 219 "pascal.y"
     {
         (yyval.vdl) = (yyvsp[(2) - (3)].vdl);
 	}
     break;
 
   case 17:
-#line 225 "pascal.y"
+#line 223 "pascal.y"
     {
         (yyval.vdl) = NULL;
 	}
     break;
 
   case 18:
-#line 231 "pascal.y"
+#line 229 "pascal.y"
     {
         (yyval.vdl) = set_variable_declaration_list((yyvsp[(3) - (3)].vd), (yyvsp[(1) - (3)].vdl));
 	}
     break;
 
   case 19:
-#line 235 "pascal.y"
+#line 233 "pascal.y"
     {
         (yyval.vdl) = set_variable_declaration_list((yyvsp[(1) - (1)].vd), NULL);
 	}
     break;
 
   case 20:
-#line 242 "pascal.y"
+#line 240 "pascal.y"
     {
         (yyval.vd) = set_variable_declaration((yyvsp[(1) - (3)].idl), (yyvsp[(3) - (3)].tden), line_number);
 	}
     break;
 
   case 21:
-#line 248 "pascal.y"
+#line 246 "pascal.y"
     {
         (yyval.fdl) = set_func_declaration_list((yyvsp[(3) - (3)].funcd), (yyvsp[(1) - (3)].fdl));
 	}
     break;
 
   case 22:
-#line 252 "pascal.y"
+#line 250 "pascal.y"
     {
         (yyval.fdl) = set_func_declaration_list((yyvsp[(1) - (1)].funcd), NULL);
 	}
     break;
 
   case 23:
-#line 256 "pascal.y"
+#line 254 "pascal.y"
     {
-        (yyval.fdl) = set_func_declaration_list(NULL, NULL);
+        (yyval.fdl) = NULL;
 	}
     break;
 
   case 24:
-#line 262 "pascal.y"
+#line 260 "pascal.y"
     {
         (yyval.fpsl) = (yyvsp[(2) - (3)].fpsl);
 	}
     break;
 
   case 25:
-#line 267 "pascal.y"
+#line 265 "pascal.y"
     {
         (yyval.fpsl) = set_formal_parameter_section_list((yyvsp[(3) - (3)].fps), (yyvsp[(1) - (3)].fpsl));
 	}
     break;
 
   case 26:
-#line 271 "pascal.y"
+#line 269 "pascal.y"
     {
         (yyval.fpsl) = set_formal_parameter_section_list((yyvsp[(1) - (1)].fps), NULL);
 	}
     break;
 
   case 29:
-#line 281 "pascal.y"
+#line 279 "pascal.y"
     {
         (yyval.fps) = set_formal_parameter_section((yyvsp[(1) - (3)].idl), (yyvsp[(3) - (3)].id), 0);
 	}
     break;
 
   case 30:
-#line 287 "pascal.y"
+#line 285 "pascal.y"
     {
         (yyval.fps) = set_formal_parameter_section((yyvsp[(2) - (4)].idl), (yyvsp[(4) - (4)].id), 1);
 	}
     break;
 
   case 31:
-#line 293 "pascal.y"
+#line 291 "pascal.y"
     {
         (yyval.funcd) = set_function_declaration(set_function_heading((yyvsp[(1) - (3)].id),"VOID", NULL), (yyvsp[(3) - (3)].fb), line_number);
 	}
     break;
 
   case 32:
-#line 297 "pascal.y"
+#line 295 "pascal.y"
     {
         (yyval.funcd) = set_function_declaration((yyvsp[(1) - (3)].fh), (yyvsp[(3) - (3)].fb), line_number);
 	}
     break;
 
   case 33:
-#line 303 "pascal.y"
+#line 301 "pascal.y"
     {
         (yyval.fh) = set_function_heading((yyvsp[(2) - (4)].id), (yyvsp[(4) - (4)].id), NULL);
 	}
     break;
 
   case 34:
-#line 307 "pascal.y"
+#line 305 "pascal.y"
     {
         (yyval.fh) = set_function_heading((yyvsp[(2) - (5)].id), (yyvsp[(5) - (5)].id), (yyvsp[(3) - (5)].fpsl));
 	}
     break;
 
   case 36:
-#line 315 "pascal.y"
+#line 313 "pascal.y"
     {
         (yyval.id) = (yyvsp[(2) - (2)].id);
 	}
     break;
 
   case 37:
-#line 323 "pascal.y"
+#line 321 "pascal.y"
     {
         (yyval.fb) = set_function_block((yyvsp[(1) - (2)].vdl), (yyvsp[(2) - (2)].ss));
 	}
     break;
 
   case 39:
-#line 332 "pascal.y"
+#line 330 "pascal.y"
     {
         (yyval.ss) = (yyvsp[(2) - (3)].ss);
 	}
     break;
 
   case 40:
-#line 338 "pascal.y"
+#line 336 "pascal.y"
     {
-        (yyval.ss) = set_statement_sequence((yyvsp[(1) - (1)].s), NULL);
+        (yyval.ss) = set_statement_sequence((yyvsp[(1) - (1)].s), NULL, line_number);
 	}
     break;
 
   case 41:
-#line 342 "pascal.y"
+#line 340 "pascal.y"
     {
-        (yyval.ss) = set_statement_sequence((yyvsp[(3) - (3)].s), (yyvsp[(1) - (3)].ss));
+        (yyval.ss) = set_statement_sequence((yyvsp[(3) - (3)].s), (yyvsp[(1) - (3)].ss), line_number);
 	}
     break;
 
   case 42:
-#line 348 "pascal.y"
+#line 346 "pascal.y"
     {
         (yyval.s) = set_statement_assignment((yyvsp[(1) - (1)].as), line_number);
 	}
     break;
 
   case 43:
-#line 352 "pascal.y"
+#line 350 "pascal.y"
     {
         (yyval.s) = set_statement_statement_sequence((yyvsp[(1) - (1)].ss), line_number);
 	}
     break;
 
   case 44:
-#line 356 "pascal.y"
+#line 354 "pascal.y"
     {
         (yyval.s) = set_statement_if((yyvsp[(1) - (1)].is), line_number);
 	}
     break;
 
   case 45:
-#line 360 "pascal.y"
+#line 358 "pascal.y"
     {
         (yyval.s) = set_statement_while((yyvsp[(1) - (1)].ws), line_number);
 	}
     break;
 
   case 46:
-#line 364 "pascal.y"
+#line 362 "pascal.y"
     {
             (yyval.s) = set_statement_print((yyvsp[(1) - (1)].ps), line_number);
         }
     break;
 
   case 47:
-#line 370 "pascal.y"
+#line 368 "pascal.y"
     {
         (yyval.ws) = set_while_statement((yyvsp[(2) - (4)].e), (yyvsp[(4) - (4)].s));
 	}
     break;
 
   case 48:
-#line 376 "pascal.y"
+#line 374 "pascal.y"
     {
         (yyval.is) = set_if_statement((yyvsp[(2) - (6)].e), (yyvsp[(4) - (6)].s), (yyvsp[(6) - (6)].s));
 	}
     break;
 
   case 49:
-#line 382 "pascal.y"
+#line 380 "pascal.y"
     {
         (yyval.as) = set_assignment_statement((yyvsp[(1) - (3)].va), (yyvsp[(3) - (3)].e), NULL);
 	}
     break;
 
   case 50:
-#line 386 "pascal.y"
+#line 384 "pascal.y"
     {
         (yyval.as) = set_assignment_statement((yyvsp[(1) - (3)].va), NULL, (yyvsp[(3) - (3)].os));
 	}
     break;
 
   case 51:
-#line 392 "pascal.y"
+#line 390 "pascal.y"
     {
         (yyval.os) = set_object_instantiation((yyvsp[(2) - (2)].id), NULL);
 	}
     break;
 
   case 52:
-#line 396 "pascal.y"
+#line 394 "pascal.y"
     {
         (yyval.os) = set_object_instantiation((yyvsp[(2) - (3)].id), (yyvsp[(3) - (3)].apl));
 	}
     break;
 
   case 53:
-#line 402 "pascal.y"
+#line 400 "pascal.y"
     {
             (yyval.ps) = set_print_statement((yyvsp[(2) - (2)].va));
         }
     break;
 
   case 54:
-#line 408 "pascal.y"
+#line 406 "pascal.y"
     {
         (yyval.va) = set_variable_access_id((yyvsp[(1) - (1)].id), NULL, NULL);
 	}
     break;
 
   case 55:
-#line 412 "pascal.y"
+#line 410 "pascal.y"
     {
-        (yyval.va) = set_variable_access_indexed_variable((yyvsp[(1) - (1)].iv), NULL, (yyvsp[(1) - (1)].iv)->expr);
+        (yyval.va) = set_variable_access_indexed_variable((yyvsp[(1) - (1)].iv), NULL, NULL);
 	}
     break;
 
   case 56:
-#line 416 "pascal.y"
+#line 414 "pascal.y"
     {
-        (yyval.va) = set_variable_access_attribute_designator((yyvsp[(1) - (1)].ad), NULL, NULL);
+        (yyval.va) = set_variable_access_attribute_designator((yyvsp[(1) - (1)].ad));
 	}
     break;
 
   case 57:
-#line 420 "pascal.y"
+#line 418 "pascal.y"
     {
         (yyval.va) = set_variable_access_method_designator((yyvsp[(1) - (1)].md), NULL, NULL);
 	}
     break;
 
   case 58:
-#line 426 "pascal.y"
+#line 424 "pascal.y"
     {
-        (yyval.iv) = set_indexed_variable((yyvsp[(1) - (4)].va), (yyvsp[(3) - (4)].iel), NULL);
+        (yyval.iv) = set_indexed_variable((yyvsp[(1) - (4)].va), (yyvsp[(3) - (4)].iel), line_number);
 	}
     break;
 
   case 59:
-#line 432 "pascal.y"
+#line 430 "pascal.y"
     {
+		/* We are assuming this will never run because we are not allowing expression lists greater than one expression */
         (yyval.iel) = set_index_expression_list((yyvsp[(3) - (3)].e), (yyvsp[(1) - (3)].iel), (yyvsp[(3) - (3)].e)->expr);
 	}
     break;
 
   case 60:
-#line 436 "pascal.y"
+#line 435 "pascal.y"
     {
         (yyval.iel) = set_index_expression_list((yyvsp[(1) - (1)].e), NULL, (yyvsp[(1) - (1)].e)->expr);
 	}
     break;
 
   case 62:
-#line 444 "pascal.y"
+#line 443 "pascal.y"
     {
-        (yyval.ad) = set_attribute_designator((yyvsp[(1) - (3)].va), (yyvsp[(3) - (3)].id));
+        (yyval.ad) = set_attribute_designator((yyvsp[(1) - (3)].va), (yyvsp[(3) - (3)].id), line_number);
 	}
     break;
 
   case 63:
-#line 450 "pascal.y"
+#line 449 "pascal.y"
     {
-        (yyval.md) = set_method_designator((yyvsp[(1) - (3)].va), (yyvsp[(3) - (3)].fdes));
+        (yyval.md) = set_method_designator((yyvsp[(1) - (3)].va), (yyvsp[(3) - (3)].fdes), line_number);
 	}
     break;
 
   case 64:
-#line 457 "pascal.y"
+#line 456 "pascal.y"
     {
-        (yyval.apl) = set_actual_parameter_list(NULL, (yyvsp[(2) - (3)].apl));
+        (yyval.apl) = (yyvsp[(2) - (3)].apl);
 	}
     break;
 
   case 65:
-#line 463 "pascal.y"
+#line 462 "pascal.y"
     {
         (yyval.apl) = set_actual_parameter_list((yyvsp[(3) - (3)].ap), (yyvsp[(1) - (3)].apl));
 	}
     break;
 
   case 66:
-#line 467 "pascal.y"
+#line 466 "pascal.y"
     {
         (yyval.apl) = set_actual_parameter_list((yyvsp[(1) - (1)].ap), NULL);
 	}
     break;
 
   case 67:
-#line 473 "pascal.y"
+#line 472 "pascal.y"
     {
+		/* We assume only this case should execute because a param list should only have an expression */
         (yyval.ap) = set_actual_parameter((yyvsp[(1) - (1)].e), NULL, NULL);
 	}
     break;
@@ -2090,235 +2090,224 @@ yyreduce:
   case 71:
 #line 489 "pascal.y"
     {
-        (yyval.e) = set_expression((yyvsp[(1) - (1)].se), -1, NULL, (yyvsp[(1) - (1)].se)->expr);
+        (yyval.e) = set_expression((yyvsp[(1) - (1)].se), RELOP_NONE, NULL, line_number);
 	}
     break;
 
   case 72:
 #line 493 "pascal.y"
     {
-        (yyval.e) = set_expression((yyvsp[(1) - (3)].se), (yyvsp[(2) - (3)].op), (yyvsp[(3) - (3)].se), 
-                            set_expression_data(simple_expression_relop((yyvsp[(1) - (3)].se), (yyvsp[(2) - (3)].op), (yyvsp[(3) - (3)].se)), 
-                                                (yyvsp[(1) - (3)].se)->expr->type));
+        (yyval.e) = set_expression((yyvsp[(1) - (3)].se), (yyvsp[(2) - (3)].op), (yyvsp[(3) - (3)].se), line_number);
 	}
     break;
 
   case 73:
-#line 501 "pascal.y"
+#line 499 "pascal.y"
     {
-        (yyval.se) = set_simple_expression((yyvsp[(1) - (1)].t), -1, (yyvsp[(1) - (1)].t)->expr, NULL);
+        (yyval.se) = set_simple_expression((yyvsp[(1) - (1)].t), ADDOP_NONE, NULL, line_number);
 	}
     break;
 
   case 74:
-#line 505 "pascal.y"
+#line 503 "pascal.y"
     {        
-        (yyval.se) = set_simple_expression((yyvsp[(3) - (3)].t), 
-                                   (yyvsp[(2) - (3)].op), 
-                                   set_expression_data((yyvsp[(1) - (3)].se)->expr->val + (yyvsp[(3) - (3)].t)->expr->val, (yyvsp[(1) - (3)].se)->expr->type) , (yyvsp[(1) - (3)].se));
+        (yyval.se) = set_simple_expression((yyvsp[(3) - (3)].t), (yyvsp[(2) - (3)].op), (yyvsp[(1) - (3)].se), line_number);
 	}
     break;
 
   case 75:
-#line 513 "pascal.y"
+#line 509 "pascal.y"
     {
-        (yyval.t) = set_term((yyvsp[(1) - (1)].f), -1, (yyvsp[(1) - (1)].f)->expr, NULL);
+        (yyval.t) = set_term((yyvsp[(1) - (1)].f), MULOP_NONE, NULL, line_number);
 	}
     break;
 
   case 76:
-#line 517 "pascal.y"
+#line 513 "pascal.y"
     { 
-        (yyval.t) = set_term((yyvsp[(3) - (3)].f), 
-                      (yyvsp[(2) - (3)].op), 
-                      set_expression_data((yyvsp[(1) - (3)].t)->expr->val * (yyvsp[(3) - (3)].f)->expr->val, 
-                                          (yyvsp[(1) - (3)].t)->expr->type), 
-                      (yyvsp[(1) - (3)].t));
+        (yyval.t) = set_term((yyvsp[(3) - (3)].f), (yyvsp[(2) - (3)].op), (yyvsp[(1) - (3)].t), line_number);
 	}
     break;
 
   case 77:
-#line 527 "pascal.y"
+#line 519 "pascal.y"
     {
-        (yyval.i) = set_sign(PLUS);
+        (yyval.op) = SIGN_PLUS;
 	}
     break;
 
   case 78:
-#line 531 "pascal.y"
+#line 523 "pascal.y"
     {
-        (yyval.i) = set_sign(MINUS);
+        (yyval.op) = SIGN_MINUS;
 	}
     break;
 
   case 79:
-#line 537 "pascal.y"
+#line 529 "pascal.y"
     {
-        (yyval.f) = set_factor_t_sign_factor(set_factor_data((yyvsp[(1) - (2)].i), (yyvsp[(2) - (2)].f)), 
-                                      set_expression_data((yyvsp[(2) - (2)].f)->expr->val, NULL));
+        (yyval.f) = set_factor_t_sign_factor((yyvsp[(1) - (2)].op), (yyvsp[(2) - (2)].f), line_number);
 	}
     break;
 
   case 80:
-#line 542 "pascal.y"
+#line 533 "pascal.y"
     {
-        (yyval.f) = set_factor_t_primary((yyvsp[(1) - (1)].p), (yyvsp[(1) - (1)].p)->expr);
+        (yyval.f) = set_factor_t_primary((yyvsp[(1) - (1)].p));
 	}
     break;
 
   case 81:
-#line 548 "pascal.y"
+#line 539 "pascal.y"
     {
-        (yyval.p) = set_primary_t_variable_access((yyvsp[(1) - (1)].va), (yyvsp[(1) - (1)].va)->expr);
+        (yyval.p) = set_primary_t_variable_access((yyvsp[(1) - (1)].va));
 	}
     break;
 
   case 82:
-#line 552 "pascal.y"
+#line 543 "pascal.y"
     {
-        (yyval.p) = set_primary_t_unsigned_constant((yyvsp[(1) - (1)].un), (yyvsp[(1) - (1)].un)->expr);
+        (yyval.p) = set_primary_t_unsigned_constant((yyvsp[(1) - (1)].un));
 	}
     break;
 
   case 83:
-#line 556 "pascal.y"
+#line 547 "pascal.y"
     {
-        (yyval.p) = set_primary_t_function_designator((yyvsp[(1) - (1)].fdes), NULL);
+        (yyval.p) = set_primary_t_function_designator((yyvsp[(1) - (1)].fdes));
 	}
     break;
 
   case 84:
-#line 560 "pascal.y"
+#line 551 "pascal.y"
     {
-        (yyval.p) = set_primary_t_expression((yyvsp[(2) - (3)].e), (yyvsp[(2) - (3)].e)->expr);
+        (yyval.p) = set_primary_t_expression((yyvsp[(2) - (3)].e));
 	}
     break;
 
   case 85:
-#line 564 "pascal.y"
+#line 555 "pascal.y"
     {
-        (yyval.p) = set_primary_t_primary(set_primary_data((yyvsp[(2) - (2)].p)), 
-                                   set_expression_data((yyvsp[(2) - (2)].p)->expr->val, 
-                                                       NULL));
+        (yyval.p) = set_primary_t_primary((yyvsp[(2) - (2)].p), line_number);
 	}
     break;
 
   case 88:
-#line 577 "pascal.y"
+#line 566 "pascal.y"
     {
-        (yyval.un) = set_unsigned_number(atoi(yytext), set_expression_data(atof(yytext), PRIMITIVE_TYPE_NAME_INTEGER));
+        (yyval.un) = set_unsigned_number(atoi(yytext), set_expression_data(atoi(yytext), "VAR"));
 	}
     break;
 
   case 89:
-#line 584 "pascal.y"
+#line 573 "pascal.y"
     {
         (yyval.fdes) = set_function_designator((yyvsp[(1) - (2)].id), (yyvsp[(2) - (2)].apl));
 	}
     break;
 
   case 90:
-#line 590 "pascal.y"
+#line 579 "pascal.y"
     {
-        (yyval.op) = PLUS;
+        (yyval.op) = ADDOP_PLUS;
 	}
     break;
 
   case 91:
-#line 594 "pascal.y"
+#line 583 "pascal.y"
     {
-        (yyval.op) = MINUS;
+        (yyval.op) = ADDOP_MINUS;
 	}
     break;
 
   case 92:
-#line 598 "pascal.y"
+#line 587 "pascal.y"
     {
-        (yyval.op) = OR;
+        (yyval.op) = ADDOP_OR;
 	}
     break;
 
   case 93:
-#line 604 "pascal.y"
+#line 593 "pascal.y"
     {
-        (yyval.op) = STAR;
+        (yyval.op) = MULOP_STAR;
 	}
     break;
 
   case 94:
-#line 608 "pascal.y"
+#line 597 "pascal.y"
     {
-        (yyval.op) = SLASH;
+        (yyval.op) = MULOP_SLASH;
 	}
     break;
 
   case 95:
-#line 612 "pascal.y"
+#line 601 "pascal.y"
     {
-        (yyval.op) = MOD;
+        (yyval.op) = MULOP_MOD;
 	}
     break;
 
   case 96:
-#line 616 "pascal.y"
+#line 605 "pascal.y"
     {
-        (yyval.op) = AND;
+        (yyval.op) = MULOP_AND;
 	}
     break;
 
   case 97:
-#line 622 "pascal.y"
+#line 611 "pascal.y"
     {
-        (yyval.op) = EQUAL;
+        (yyval.op) = RELOP_EQUAL;
 	}
     break;
 
   case 98:
-#line 626 "pascal.y"
+#line 615 "pascal.y"
     {
-        (yyval.op) = NOTEQUAL;
+        (yyval.op) = RELOP_NOTEQUAL;
 	}
     break;
 
   case 99:
-#line 630 "pascal.y"
+#line 619 "pascal.y"
     {
-        (yyval.op) = LT;
+        (yyval.op) = RELOP_LT;
 	}
     break;
 
   case 100:
-#line 634 "pascal.y"
+#line 623 "pascal.y"
     {
-        (yyval.op) = GT;
+        (yyval.op) = RELOP_GT;
 	}
     break;
 
   case 101:
-#line 638 "pascal.y"
+#line 627 "pascal.y"
     {
-        (yyval.op) = LE;
+        (yyval.op) = RELOP_LE;
 	}
     break;
 
   case 102:
-#line 642 "pascal.y"
+#line 631 "pascal.y"
     {
-        (yyval.op) = GE;
+        (yyval.op) = RELOP_GE;
 	}
     break;
 
   case 103:
-#line 648 "pascal.y"
+#line 637 "pascal.y"
     {
-        (yyval.id) = (char *)malloc(strlen(yytext));
+        (yyval.id) = (char *)malloc(strlen(yytext)*sizeof(char));
         strcpy((yyval.id),yytext);
 	}
     break;
 
 
 /* Line 1267 of yacc.c.  */
-#line 2322 "y.tab.c"
+#line 2311 "y.tab.c"
       default: break;
     }
   YY_SYMBOL_PRINT ("-> $$ =", yyr1[yyn], &yyval, &yyloc);
@@ -2532,6 +2521,6 @@ yyreturn:
 }
 
 
-#line 660 "pascal.y"
+#line 649 "pascal.y"
 
 
