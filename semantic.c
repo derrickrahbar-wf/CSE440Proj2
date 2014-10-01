@@ -57,6 +57,38 @@ void validate_assignment_statement(struct statement_table_t* statement,
 {
     struct assignment_statement_t *a_stat = statement->statement_data->as;
 
+    if(a_stat->va->type == VARIABLE_ACCESS_T_IDENTIFIER)
+    {
+        if(!strcmp(a_stat->data.id, statement_func->fh->id))
+        {
+            if(a_stat->e != NULL)
+            {
+                struct expression_data_t *expr_type = get_expr_expr_data(a_stat->e, attr_hash_table, statement_func, statement->line_number);
+                if(structurally_equivalent(set_expression_data(-1, statement_func->fh->res), expr_type))   
+                {
+                    return;
+                }
+                else
+                {
+                    error_datatype_is_not(statement->line_number, expr_type->type, statement_func->fh->res);
+                }
+            }
+            else
+            {
+                struct expression_data_t *obj_inst_type = get_obj_inst_expr_data(a_stat->oe, attr_hash_table, statement_func, statement->line_number);
+                if(structurally_equivalent(set_expression_data(-1, statement_func->fh->res), obj_type->type))
+                {
+                    return;
+                }
+                else
+                {
+                    error_datatype_is_not(statement->line_number, obj_type->type, statement_func->fh->res);
+                } 
+            }
+            return;
+        }
+    }
+
     struct expression_data_t *va_type = get_va_expr_data(a_stat->va, attr_hash_table, statement_func, statement->line_number);
 
     if(a_stat->e != NULL)
@@ -258,7 +290,7 @@ struct expression_data_t* get_obj_inst_expr_data(struct object_instantiation_t *
         {
             char *lookup_key = create_attribute_key(obj_inst->id, SCOPE_NFV, NULL);
             HASH_FIND_STR(class->attribute_hash_table, lookup_key, function);
-            if(function != NULL)
+            if(function != NULL && function->is_func)
             {
                 check_param_list_against_function(obj_inst->apl, function->params, obj_inst->id, attr_hash_table, statement_func, line_number);
             }
@@ -465,7 +497,211 @@ int structurally_equivalent(struct expression_data_t *expr_1, struct expression_
 
 int check_for_equivalence(struct expression_data_t expr_1, struct expression_data_t expr_2)
 {
+    if(is_primitive(expr_1->type) || is_primitive(expr_2->type))
+    {
+        return check_primitive_equivalence(expr_1->type, expr_2->type);
+    }
+    if(is_array(expr_1->type) || is_array(expr_2->type))
+    {
+        return check_array_equivalence(expr_1, expr_2);
+    }
+    return check_class_equivalence(expr_1, expr_2);
+}
 
+int check_class_equivalence(struct expression_data_t expr_1, struct expression_data_t expr_2)
+{
+    if(!strcmp(expr_1->type, expr_2->type));
+    {
+        return TRUE;
+    }
+    /* Line number is no longer relevant class retrieval */
+    struct attribute_table_t *eat_1 = get_class_attr_table(expr_1->type, -1);
+    struct attribute_table_t *eat_2 = get_class_attr_table(expr_2->type, -1);
+
+    struct class_table_t *ect_1 = NULL;
+    struct class_table_t *ect_2 = NULL;
+    
+    HASH_FIND_STR(g_class_table_head, expr_1->type, ect_1);
+    HASH_FIND_STR(g_class_table_head, expr_2->type, ect_2);
+
+    if(ect_1 == NULL || ect_2 == NULL)
+    {
+        error_unknown(-10);
+        exit_on_errors();
+    }
+    if((ect_1->class_var_num != ect_2->class_var_num) || (ect_1->class_func_num != ect_2->class_func_num))
+    {
+        return FALSE;
+    }
+
+    struct type_denoter_t *expr_1_var_array[ect_1->class_var_num];
+    struct function_declaration_t *expr_1_func_array[ect_1->class_func_num];
+    struct type_denoter_t *expr_1_func_types[ect_1->class_func_num];
+    
+    struct attribute_table_t *a1;
+    
+    for(a1=eat_1; a1 != NULL; a1 = a1->hh.next)
+    {
+        if(a1->scope == SCOPE_NFV)
+        {
+            if(a1->is_func)
+            {
+                expr_1_func_array[a1->order] = a1->function;
+                expr_1_func_types[a1->order] = a1->type;
+            }
+            else
+            {
+                expr_1_var_array[a1->order] = a1->type;
+            }
+        }
+    }
+
+    struct type_denoter_t *expr_2_var_array[ect_2->class_var_num];
+    struct function_declaration_t *expr_2_func_array[ect_2->class_func_num];
+    struct type_denoter_t *expr_2_func_types[ect_2->class_func_num];
+
+    struct attribute_table_t *a2;
+    for(a2=eat_2; a2 != NULL; a2 = a2->hh.next)
+    {
+        if(a2->scope == SCOPE_NFV)
+        {
+            if(a2->is_func)
+            {
+                expr_2_func_array[a2->order] = a2->function;
+                expr_2_func_types[a2->order] = a2->type;
+            }
+            else
+            {
+                expr_2_var_array[a2->order] = a2->type;
+            }
+        }
+    }
+
+    int i;
+    for(i=0; i<ect_2->class_var_num; i++)
+    {
+        struct type_denoter_t *t1 = expr_1_var_array[i];
+        struct type_denoter_t *t2 = expr_2_var_array[i];
+
+        if((t1->type == TYPE_DENOTER_T_CLASS_TYPE) && (t2->type == TYPE_DENOTER_T_CLASS_TYPE))
+        {
+            /* We arent supporting recursive equivalence so if one class has an attribute that is the type of the other class */
+            /* We assume they are not equivalent */
+            if(!strcmp(t1->name, expr_2->type))
+            {
+                return FALSE;
+            }
+            if(!strcmp(t2->name, expr_1->type))
+            {
+                return FALSE;
+            }
+        }
+        
+        struct expression_data_t *e_var_1 = set_expression_data(-1, t1->name);
+        if(t1->type == TYPE_DENOTER_T_ARRAY_TYPE)
+        {
+            e_var_1->array = t1->data.at;
+        }
+       
+        struct expression_data_t *e_var_2 = set_expression_data(-1, t2->name);
+        if(t2->type == TYPE_DENOTER_T_ARRAY_TYPE)
+        {
+            e_var_2->array = t2->data.at;
+        }
+        if(!structurally_equivalent(e_var_1, e_var_2))
+        {
+            return FALSE;
+        }
+    }
+
+    for(i=0; i<ect_2->class_func_num; i++)
+    {
+        struct function_declaration_t *t1 = expr_1_func_array[i];
+        struct function_declaration_t *t2 = expr_2_func_array[i];
+
+        if(strcmp(t1->fh->id, t2->fh->id))
+        {
+            return FALSE;
+        }
+
+        if(!formal_param_lists_equal(t1->fh->fpsl, t2->fh->fpsl))
+        {
+            return FALSE;
+        }
+
+        if((expr_1_func_types[i]->type == TYPE_DENOTER_T_CLASS_TYPE) && (expr_2_func_types[i]->type == TYPE_DENOTER_T_CLASS_TYPE))
+        {
+            if(!strcmp(t1->fh->id, expr_2->type) || !strcmp(t2->fh->id, expr_1->type))
+            {
+                return FALSE;
+            }
+
+            struct expression_data_t *func_expr_1 = set_expression_data(-1, t1->fh->id);
+            struct expression_data_t *func_expr_2 = set_expression_data(-1, t2->fh->id);
+
+            if(!structurally_equivalent(func_expr_1, func_expr_2))
+            {
+                return FALSE;
+            }
+        }
+
+        /* At this point, we know that atleast one function return type is not a class */
+        if(strcmp(t1->fh->res, t2->fh->res))
+        {
+            return FALSE;
+        }
+
+    }
+    return TRUE;
+}
+
+int formal_param_lists_equal(struct)
+
+int check_array_equivalence(struct expression_data_t expr_1, struct expression_data_t expr_2)
+{
+    if(!is_array(expr_1) || !is_array(expr_2))
+    {
+        return FALSE;
+    }
+    
+    struct array_t *a1 = expr_1->array; 
+    struct array_t *a2 = expr_2->array;
+
+    if(a1->min != a2->min || a1->max != a2->max)
+    {
+        return FALSE;
+    }
+    else
+    {
+        struct expression_data_t *ae1 = set_expression_data(-1, a1->td->name);
+        if(a1->td->type == TYPE_DENOTER_T_ARRAY_TYPE)
+        {
+            ae1->array = a1->td->data.at;
+        }
+
+
+        struct expression_data_t *ae2 = set_expression_data(-1, a2->td->name);
+        if(a2->td->type == TYPE_DENOTER_T_ARRAY_TYPE)
+        {
+            ae2->array = a2->td->data.at;
+        }
+
+        return structurally_equivalent(ae1, ae2);
+    }
+}
+
+int is_primitive(char *id)
+{
+    if(is_integer(id) || is_real(id) || is_boolean(id))
+    {
+        return TRUE;
+    }
+    return FALSE;
+}
+
+int check_primitive_equivalence(char *t1, char *t2)
+{
+    return !strcmp(t1, t2);
 }
 
 void check_param_list_against_function(struct actual_parameter_list_t *apl, 
@@ -481,7 +717,8 @@ void check_param_list_against_function(struct actual_parameter_list_t *apl,
         id_list = fpl->il;
         while(id_list != NULL && apl != NULL)
         {
-            if(!strcmp(fpl->fps->id, get_expr_expr_data(apl->e1, attr_hash_table, statement_func, line_number)->type))
+            if(!structurally_equivalent(set_expression_data(-1, fpl->fps->id), 
+                get_expr_expr_data(apl->e1, attr_hash_table, statement_func, line_number)))
             {
                 error_function_not_declared(line_number, id);
                 return;
@@ -497,16 +734,6 @@ void check_param_list_against_function(struct actual_parameter_list_t *apl,
     }
 }
 
-void check_for_class_existence(char *id, int line_number)
-{
-    struct class_table_t *class_ptr = NULL;
-    HASH_FIND_STR(g_class_table_head, id, class_ptr);
-    if(class_ptr == NULL)
-    {
-        error_type_not_defined(line_number, id);
-        exit_on_errors();
-    }
-}
 
 int has_this(char *id);
 {
@@ -614,7 +841,7 @@ struct expression_data_t* convert_td_to_expr_data(struct type_denoter_t *type, s
             return expr;
             break;
         case TYPE_DENOTER_T_CLASS_TYPE:
-            check_for_class_existence(type->name, line_number);
+            check_for_class_existence(type->name, line_number, g_class_table_head);
             expr = set_expression_data(-1, type->name);
             return expr;
             break;
@@ -650,6 +877,16 @@ struct expression_data_t *evaluate_va_indexed_var(struct variable_access_t *va,
     {
         error_datatype_is_not(line, index_expr_type->type, "integer");
     }
+
+    /* if index was a single literal, the value will be populated and we can check for bounds */
+    if(!strcmp(index_expr_type->type, "VAR"))
+    {
+        if(!(va->type->array->r->min <= index_expr_type->val && va->type->array->r->max >= index_expr_type->val))
+        {
+            error_array_index_out_of_bounds(line_number, va->type->array->r->min, va->type->array->r->max);
+        }    
+    }
+    
     return convert_td_to_expr_data(va->array->td, va->expr, line_number);
 }
 
@@ -670,3 +907,53 @@ struct expression_data_t* evaluate_va_attribute_designator(struct variable_acces
                                                            struct attribute_table_t *attr_hash_table,
                                                            struct function_declaration_t *func, 
                                                            int line_number)
+{
+    struct attribute_designator_t *attr_des = va->data.ad;
+    struct expression_data_t *sub_va = get_va_expr_data(attr_des->va, attr_hash_table, func, line_number);
+    struct attribute_table_t *classes_attr_table = get_class_attr_table(sub_va->type, line_number);
+
+    struct attribute_table_t *va_attr_node = NULL;
+    HASH_FIND_STR(classes_attr_table, create_attribute_key(attr_des->id, SCOPE_NFV, NULL), va_attr_node);
+
+    if(va_attr_node == NULL || va_attr_node->is_func)
+    {
+        error_variable_not_declared(line_number, attr_des->id);
+        exit_on_errors();
+    }
+
+    return convert_td_to_expr_data(va_attr_node->type, va_attr_node->expr, line_number);
+}
+
+struct expression_data_t *evaluate_va_method_designator(struct variable_access_t *va, 
+                                                        struct attribute_table_t *attr_hash_table,
+                                                        struct function_declaration_t *func, 
+                                                        int line_number)
+{
+    struct method_designator_t *meth_des = va->data.md;
+    struct expression_data_t *meth_va = get_va_expr_data(meth_des->va, attr_hash_table, func, line_number);
+
+    struct expression_data_t *meth_fd = get_func_des_expr_data(meth_des->fd, get_class_attr_table(meth_va->type, line_number), statement_func, line_number);
+
+    return meth_fd;
+
+}
+
+struct attribute_table_t* get_class_attr_table(char *id, int line_number);
+{
+    struct class_table_t *class_ptr = NULL;
+    HASH_FIND_STR(g_class_table_head, id, class_ptr);
+    if(class_ptr == NULL)
+    {
+        error_type_not_defined(line_number, id);
+        exit_on_errors();
+    }
+    return class_ptr->attribute_hash_table;
+}
+
+
+
+
+
+
+
+
