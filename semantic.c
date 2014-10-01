@@ -1,4 +1,11 @@
 /*
+* Maddison Meier and Derrick Rahbar Compilers fall 2014
+*
+*
+*/
+
+
+/*
  * semantic.c
  *
  * Implements all functions that participate in semantic analysis.

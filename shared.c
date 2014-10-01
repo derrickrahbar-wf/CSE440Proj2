@@ -1,3 +1,9 @@
+/*
+* Maddison Meier and Derrick Rahbar Compilers fall 2014
+*
+*
+*/
+
 /* shared.c
  *
  * Implements all shared subroutines

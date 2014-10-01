@@ -9,6 +9,13 @@
  * The grammar has been massaged somewhat to make it LALR.
  */
 
+/*
+* Maddison Meier and Derrick Rahbar Compilers fall 2014
+*
+*
+*/
+
+
 #include "shared.h"
 #include "rulefuncs.h"
 

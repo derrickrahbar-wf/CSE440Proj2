@@ -1,4 +1,11 @@
 /*
+* Maddison Meier and Derrick Rahbar Compilers fall 2014
+*
+*
+*/
+
+
+/*
  * main.c
  *
  * Implements an object oriented pascal compiler

@@ -1,3 +1,10 @@
+/*
+* Maddison Meier and Derrick Rahbar Compilers fall 2014
+*
+*
+*/
+
+
 /* shared.h
  *
  * Contains function definitions of all shared subroutines
