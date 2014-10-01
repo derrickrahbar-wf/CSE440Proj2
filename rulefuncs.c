@@ -1089,8 +1089,6 @@ struct expression_data_t *new_expression_data()
  return ed;
 }
 
-
-
 void assign_missing_extend(struct class_list_t *class_list)
 {
     struct class_list_t *cl_head = class_list;

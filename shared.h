@@ -11,6 +11,8 @@
 #include <string.h>
 #include "./uthash/src/uthash.h"
 
+#define VA_SCOPE_MAIN 1
+
 #define SCOPE_FV 0
 #define SCOPE_NFV 1
 
@@ -63,6 +65,11 @@
 #define RELOP_LE 4
 #define RELOP_GE 5
 #define RELOP_NONE -1
+
+#define EXPRESSION_DATA_INTEGER 1
+#define EXPRESSION_DATA_BOOLEAN 2
+#define EXPRESSION_DATA_REAL 3
+
 
 /* Macro that checks for a malloc error */
 #define CHECK_MEM_ERROR(name) {if (name == NULL) { \
@@ -225,6 +232,7 @@ struct function_designator_t{
 struct expression_data_t{
   float val;
   char *type;
+  struct array_type_t *array;
 };
 
 struct unsigned_number_t{
@@ -523,7 +531,7 @@ struct variable_access_t *set_variable_access_method_designator(struct method_de
 struct variable_declaration_t *set_variable_declaration(struct identifier_list_t *il, struct type_denoter_t *tden, int line_number);
 struct variable_declaration_list_t *set_variable_declaration_list(struct variable_declaration_t *vd, struct variable_declaration_list_t *next);
 struct while_statement_t *set_while_statement(struct expression_t *e, struct statement_t *s);
-
+struct expression_data_t* identify_primitive_data(char *id);
 
 
 
@@ -544,6 +552,7 @@ struct attribute_table_t{
     UT_hash_handle hh; /* defines structure as a hashable object */
     int scope;
     struct function_declaration_t *function;
+    struct expression_data_t *expr;
     char id[30];
     int id_length;
     char string_key[61];  
@@ -566,6 +575,7 @@ struct class_table_t {
     int line_number;
     struct statement_table_t *statement_hash_table;
     UT_hash_handle hh; /* defines structure as a hashable object */
+    struct class_list_t *class_list;
     char *id;
 };
 
@@ -618,6 +628,10 @@ struct class_table_t* find_hash_object(struct class_extend_t *class_list);
 void print_class_hash_table(struct class_table_t* class_table);
 void check_extend_attributes(struct class_list_t *base_class, struct class_list_t *parent_class);
 void check_id_against_var_dec_list(char *id, struct class_list_t *parent_class, int line_number);
+char* create_attribute_key(char* id, int scope, char *function_id);
+void check_class_constructors(struct class_table_t *class_hash_table);
+struct expression_data_t* check_real_or_integer(struct expression_data_t *expr_1, struct expression_data_t *expr_2, int line_number);
+struct expression_data_t* check_boolean(struct expression_data_t *expr_1, struct expression_data_t *expr_2, int line_number);
 
 
 void create_class_hash_table(struct class_list_t *class_list);
@@ -626,7 +640,7 @@ int is_real(char *id);
 int is_boolean(char *id);
 int is_integer(char *id);
 int is_array(char *id);
-
+void exit_on_errors();
 
 
 

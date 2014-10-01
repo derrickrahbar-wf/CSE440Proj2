@@ -441,6 +441,7 @@ index_expression : expression ;
 
 attribute_designator : variable_access DOT identifier
 	{
+        printf("\n.id= %s\n", $3);
         $$ = set_attribute_designator($1, $3, line_number);
 	}
 ;

@@ -121,6 +121,18 @@ void error_extends_itself(int line_number, char *id)
 }
 
 
+void error_constructor_cannot_have_return_type(int line_number, char *id)
+{
+  char *e;
+
+  e = (char *) malloc(MAX_ERROR_SIZE);
+  CHECK_MEM_ERROR(e)
+
+  error_check_not_null(&id);
+  sprintf(e, "Class \"%s\" constructor cannot have a return type : %d", id, line_number);
+  error(line_number, e);
+}
+
 /* ----------------------------------------------------------------------- 
  * Outputs an error message if a datatype is not defined
  * ----------------------------------------------------------------------- 

@@ -50,6 +50,7 @@ void error_function_return_value_not_set(int line_number, char *f);
 void error_array_index_is_not_integer(int line_number, char *v);
 void error_circular_extends(int line_number, char *id, char *p_id);
 void error_extends_itself(int line_number, char *id);
+void error_constructor_cannot_have_return_type(int line_number, char *id);
 
 
 

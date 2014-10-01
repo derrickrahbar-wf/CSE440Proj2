@@ -18,10 +18,11 @@ void eval_statement(struct statement_t *statement);
 
 struct statement_table_t *create_statement_table(struct statement_t *statement);
 
-char * get_expr_type(struct expression_t *expr);
-char *get_obj_inst_type(struct object_instantiation_t *obj_inst);
-char * get_va_type(struct variable_access_t* va);
-
+struct expression_data_t* get_expr_expr_data(struct expression_t *expr, int line_number);
+struct expression_data_t* get_obj_inst_expr_data(struct object_instantiation_t *obj_inst);
+struct expression_data_t* get_va_expr_data(struct variable_access_t* va);
+struct expression_data_t* get_simple_expr_expr_data(struct simple_expression_t *simple_expression, int line_number);
+int evaluate_this(char *id);;
 
 
 #endif /* SEMANTIC_H */
