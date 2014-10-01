@@ -445,6 +445,8 @@ struct class_block_t{
   struct func_declaration_list_t *fdl;
   struct statement_table_t *statement_hash_table; /* Circular? */
   struct attribute_table_t *attribute_hash_table;
+  int class_func_num;
+  int class_var_num;
 };
 
 struct class_list_t;
@@ -532,6 +534,9 @@ struct variable_declaration_t *set_variable_declaration(struct identifier_list_t
 struct variable_declaration_list_t *set_variable_declaration_list(struct variable_declaration_t *vd, struct variable_declaration_list_t *next);
 struct while_statement_t *set_while_statement(struct expression_t *e, struct statement_t *s);
 struct expression_data_t* identify_primitive_data(char *id);
+void check_for_same_name_vars(char *class_id, struct attribute_table_t *attr_hash_table);
+void check_for_class_existence(char *id, struct class_table_t *class_hash_table int line_number);
+void validate_type_denoter(struct type_denoter_t *td, struct class_table_t *class_hash_table, int line_number);
 
 
 
@@ -554,6 +559,7 @@ struct attribute_table_t{
     struct function_declaration_t *function;
     struct expression_data_t *expr;
     char id[30];
+    int order;
     int id_length;
     char string_key[61];  
 };
@@ -573,6 +579,8 @@ struct class_table_t {
     struct attribute_table_t *attribute_hash_table;
     struct class_table_t *extend;
     int line_number;
+    int class_func_num;
+    int class_var_num;
     struct statement_table_t *statement_hash_table;
     UT_hash_handle hh; /* defines structure as a hashable object */
     struct class_list_t *class_list;
@@ -588,14 +596,14 @@ struct class_table_t {
 
 
 /* Helper Functions (Hi Dr. Bazzi) */
-void create_attribute_hash_table(struct func_declaration_list_t *func_dec_list, struct variable_declaration_list_t *var_dec_list);
-void add_class_funcs_to_aht(struct func_declaration_list_t *func_dec_list, struct function_declaration_t *dummy_func_dec);
+int * create_attribute_hash_table(struct func_declaration_list_t *func_dec_list, struct variable_declaration_list_t *var_dec_list);
+int add_class_funcs_to_aht(struct func_declaration_list_t *func_dec_list, struct function_declaration_t *dummy_func_dec, int order);
 struct type_denoter_t* generate_type_denoter(char* return_type);
 void add_attribute_to_hash_table(struct attribute_table_t *attr, int entity_type);
 void attribute_hash_table_error(struct attribute_table_t *item_ptr, struct attribute_table_t *failed_attr);
 struct attribute_key_t* create_attribute_key(char *id, int scope, struct function_declaration_t *function);
-void add_class_attrs_to_aht(struct variable_declaration_list_t *var_dec_list, int type, struct function_declaration_t *dummy_func_dec);
-void parse_var_dec(struct variable_declaration_t *var_dec, int scope, struct function_declaration_t *func);
+int add_class_attrs_to_aht(struct variable_declaration_list_t *var_dec_list, int type, struct function_declaration_t *dummy_func_dec, int order);
+int parse_var_dec(struct variable_declaration_t *var_dec, int scope, struct function_declaration_t *func, int order);
 void parse_param_section(struct formal_parameter_section_t *param_section, int scope, struct function_declaration_t *func);
 void add_func_var_to_aht(struct variable_declaration_list_t *var_dec_list, int scope, struct function_declaration_t *func);
 

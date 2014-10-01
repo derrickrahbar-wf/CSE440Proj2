@@ -565,7 +565,7 @@ unsigned_number : unsigned_integer ;
 
 unsigned_integer : DIGSEQ
 	{
-        $$ = set_unsigned_number(atoi(yytext), set_expression_data(atof(yytext), "integer"));
+        $$ = set_unsigned_number(atoi(yytext), set_expression_data(atoi(yytext), "constant"));
 	}
  ;
 

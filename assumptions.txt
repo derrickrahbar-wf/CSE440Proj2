@@ -11,7 +11,10 @@
 11) As long as the variable access is valid, print statement allows any type
 12) Expressions have a field "val" which we are not populating, because we purely doing semantic analysis. We are not actually evaluating expressions.
 13) If you try to access a class that does not exist (i.e. a = new fake_class() and there is no "fake_class") than the program will exit immediately.
-14) for function calls we are abiding by name equivalence to compare actual parameter types and formal parameter types, not structual equivalence.
+14) An array indice can only be checked for inbounds if it is a single literal (i.e. a[1]), we felt that evaluating expressions of literals was to be a part of code generation (i.e. a[1+2])
+15) You cannot have a class attribute with the same name of the class (other than a constructor), but you can have a local variable (in a class function) with the same name of the class because we are not supporting static functions.
+16) We are not supporting recursive structual equivalence.
 
 REMINDERS:
 1) If a type denoter is a primitive (TYPE_DENOTER_T_IDENTIFIER) its "name" will correspond to integer, boolean or real and its data will be null
+2) If an expression->type is VAR than its an integer (we did this for literals in evaluating array indices)
