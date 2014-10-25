@@ -33,9 +33,6 @@ void process_statement(statement_t *s)
 		case STATEMENT_T_WHILE:
 			add_while_statement_to_cfg(s.data->ws);
 			break;
-		case STATEMENT_T_PRINT:
-			add_print_statement_to_cfg(s.data->ps);
-			break;
 	}
 }
 
@@ -80,18 +77,17 @@ void add_statements_to_cfg(statement_sequence_t *ss)
 
 void add_assignment_to_cfg(assignment_statement_t *as)
 {
-	Statement *assign = new Statement();
-	assign->type = ASSIGNMENT_CF;
-	assign.data->as = as;
-	cfg[current_bb]->statements.push_back(assign);
-}
+	if(!is_3_address_code(as->e))
+	{
+		RHS *rhs = new RHS();
+		rhs->t1 = gen_term_from_expr(as->e);
+		rhs->op = 
+	}
+	else
+	{
 
-void add_print_statement_to_cfg(print_statement_t *ps)
-{
-	Statement *print = new Statement();
-	print->type = PRINT_CF;
-	print.data->ps = ps;
-	cfg[current_bb]->statements.push_back(print);
+	}
+
 }
 
 void add_if_statement_to_cfg(if_statement_t *ifs)
@@ -113,28 +109,9 @@ void add_if_statement_to_cfg(if_statement_t *ifs)
 
 void add_condition_to_bb(expression_t *expr)
 {
-	Statement *e = new Statement();
-	e->type = ASSIGNMENT_CF;
-	e.data->as = create_as_from_expr(expr);
-	cfg[current_bb]->statements.push_back(e);
-}
-
-assignment_statement_t* create_as_from_expr(expression_t *expr)
-{
-	assignment_statement_t *as = (assignment_statement_t*)malloc(sizeof(assignment_statement_t));
 	
-	char *id = '$';
-	id = strcat(id, itoa(condition_var_name));
-
-	as->va = (variable_access_t*)malloc(sizeof(variable_access_t));
-	as->va->type = VARIABLE_ACCESS_T_IDENTIFIER;
-
-	as->va.data->id = (char*)malloc(sizeof(char)*strlen(id) + 1);
-	strncpy(as->va.data->id, id, strlen(id));
-	as->va->expr = expr;
-
-	return as;
 }
+
 
 /* Adds a statement of an if statement (i.e. adds st1 or st2 of an if statement) */
 int add_if_body_to_cfg(statement_t *st, int parent)

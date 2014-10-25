@@ -15,6 +15,7 @@
 #include "symtab.h"
 #include "rulefuncs.h"
 #include "semantic.h"
+#include "control_flow.h"
 
 
 /* Flags if any errors occured */
@@ -111,8 +112,7 @@ int main(int argc, char **argv)
   /* If there were parsing errors, exit. */
   exit_on_errors();
 
-  /* Perform semantic analysis */
-  semantic_analysis(program);
+  create_CFG(program->cl->cb->fdl->fd->fb->ss);
 
   /* If there were errors during semantic analysis, exit. */
   exit_on_errors();

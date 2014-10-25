@@ -273,6 +273,11 @@ struct primary_t{
   struct expression_data_t *expr;
 };
 
+ struct factor_data_t{
+    int sign;
+    struct factor_t *next;
+  };
+
 #define FACTOR_T_SIGNFACTOR 1
 #define FACTOR_T_PRIMARY 2
 struct factor_t{
@@ -280,10 +285,7 @@ struct factor_t{
 	     * 2 - primary
 	     */
   union {
-    struct factor_data_t{
-      int sign;
-      struct factor_t *next;
-    }f;
+    struct factor_data_t *f;
     struct primary_t *p;
   }data;
   struct expression_data_t *expr;
@@ -636,7 +638,7 @@ struct statement_table_t* create_statement_node(struct statement_t *stat, struct
 void add_statement_to_hash_table(struct statement_table_t *statement);
 void print_statement_hash_table(struct statement_table_t *stat);
 void find_undefined_extends(struct class_list_t *class_list);
-void add_class_to_hash_table(struct class_table_t *class);
+void add_class_to_hash_table(struct class_table_t *class_t);
 struct class_table_t* create_class_node(struct class_list_t *class_list);
 void add_class_to_cht(struct class_list_t *class_list);
 struct class_table_t* find_hash_object(char *class_list);

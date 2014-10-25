@@ -51,26 +51,26 @@ char * tolower(char *s)
 {
   int len;
   int i;
-  char *new;
+  char *new_t;
 
   if (s != NULL)
     len = strlen(s);
   else
     len = 0;
 
-  new = (char *) malloc(len + 1); /* +1 for '\0' */
+  new_t = (char *) malloc(len + 1); /* +1 for '\0' */
 
   for (i = 0; i < len; i++) {
     /* if an uppercase character */
     if (s[i] >= 65 && s[i] <=  90)
-      new[i] = s[i] + 32;
+      new_t[i] = s[i] + 32;
     else
-      new[i] = s[i];
+      new_t[i] = s[i];
   }
 
-  new[len] = '\0';
+  new_t[len] = '\0';
 
-  return new;
+  return new_t;
 }
 
 
@@ -316,7 +316,7 @@ struct factor_t* set_factor_t_sign_factor(int sign, struct factor_t* f, int line
 {
     struct factor_t *fsf = new_factor();
     fsf->type = FACTOR_T_SIGNFACTOR;
-    fsf->data.f = *(set_factor_data(sign, f));
+    fsf->data.f = set_factor_data(sign, f);
 
     /*This would need to be a real or an integer to have a sign in from of it */
     if(f->expr != NULL)
@@ -1037,8 +1037,8 @@ void create_class_hash_table(struct class_list_t *class_list)
 
 void add_class_to_cht(struct class_list_t *class_list)
 {
-    struct class_table_t *class = create_class_node(class_list);
-    add_class_to_hash_table(class);
+    struct class_table_t *class_t = create_class_node(class_list);
+    add_class_to_hash_table(class_t);
 }
 
 void create_statement_hash_table(struct func_declaration_list_t *func_dec_list)
@@ -1067,7 +1067,7 @@ void add_statement_list_to_sht(struct function_declaration_t *func_dec)
 int* create_attribute_hash_table(struct func_declaration_list_t *func_dec_list, struct variable_declaration_list_t *var_dec_list)
 {
     /* dummy function dec to use in the key of NFV nodes */
-    struct function_declaration_t *NFV_dummy_func_dec = (struct function_declaration_t*)(malloc(sizeof(NFV_dummy_func_dec))+1);
+    struct function_declaration_t *NFV_dummy_func_dec = (struct function_declaration_t*)(malloc(sizeof(NFV_dummy_func_dec)+1));
     int *arr = (int*)malloc(2*sizeof(int)+1);
     arr[0] = add_class_attrs_to_aht(var_dec_list, SCOPE_NFV, NFV_dummy_func_dec);
     arr[1] = add_class_funcs_to_aht(func_dec_list, NFV_dummy_func_dec, 0);
@@ -1208,17 +1208,17 @@ struct type_denoter_t* generate_type_denoter(char* return_type)
     return type;
 }
 
-void add_class_to_hash_table(struct class_table_t *class)
+void add_class_to_hash_table(struct class_table_t *class_t)
 {
     struct class_table_t *item_ptr;
-    HASH_FIND_STR(class_hash_table, class->id, item_ptr);
+    HASH_FIND_STR(class_hash_table, class_t->id, item_ptr);
     if(item_ptr == NULL)
     {
-        HASH_ADD_STR(class_hash_table, id, class);
+        HASH_ADD_STR(class_hash_table, id, class_t);
     }
     else
     {
-        error_class_already_declared(class->line_number, class->id, item_ptr->line_number);
+        error_class_already_declared(class_t->line_number, class_t->id, item_ptr->line_number);
     }
 }
 
@@ -1287,26 +1287,26 @@ void attribute_hash_table_error(struct attribute_table_t *item_ptr, struct attri
 
 struct class_table_t* create_class_node(struct class_list_t *class_list)
 {
-    struct class_table_t *class = (struct class_table_t*)malloc(sizeof(struct class_table_t)+1);
+    struct class_table_t *class_t = (struct class_table_t*)malloc(sizeof(struct class_table_t)+1);
     
-    class->attribute_hash_table = class_list->cb->attribute_hash_table;
-    class->statement_hash_table = class_list->cb->statement_hash_table;
+    class_t->attribute_hash_table = class_list->cb->attribute_hash_table;
+    class_t->statement_hash_table = class_list->cb->statement_hash_table;
     if(class_list->ci->extend != NULL)
     {
-        class->extend = (struct class_table_t*)malloc(sizeof(struct class_table_t)+1);
-        class->extend->id = (char*)malloc(sizeof(char)*strlen(class_list->ci->extend->id)+1);
-        strcpy(class->extend->id, class_list->ci->extend->id);
+        class_t->extend = (struct class_table_t*)malloc(sizeof(struct class_table_t)+1);
+        class_t->extend->id = (char*)malloc(sizeof(char)*strlen(class_list->ci->extend->id)+1);
+        strcpy(class_t->extend->id, class_list->ci->extend->id);
     }
 
-    class->line_number = class_list->ci->line_number;
-    class->class_list = class_list;
-    class->class_var_num = class_list->cb->class_var_num;
-    class->class_func_num = class_list->cb->class_func_num;
+    class_t->line_number = class_list->ci->line_number;
+    class_t->class_list = class_list;
+    class_t->class_var_num = class_list->cb->class_var_num;
+    class_t->class_func_num = class_list->cb->class_func_num;
     
-    class->id = (char*)malloc(strlen(class_list->ci->id)*sizeof(char)+1);
-    strcpy(class->id, class_list->ci->id);
+    class_t->id = (char*)malloc(strlen(class_list->ci->id)*sizeof(char)+1);
+    strcpy(class_t->id, class_list->ci->id);
 
-    return class;
+    return class_t;
 }
 
 struct statement_table_t* create_statement_node(struct statement_t *stat, struct function_declaration_t *function, int line_number)
@@ -1409,378 +1409,378 @@ char* format_attr_id(char id[], int id_length)
     return real_id;
 }
 
-void print_statement_hash_table(struct statement_table_t *stat)
-{
-    struct statement_table_t *t;
-    printf("/////////////////STATEMENT HAST TABLE/////////////////////\n");
+// void print_statement_hash_table(struct statement_table_t *stat)
+// {
+//     struct statement_table_t *t;
+//     printf("/////////////////STATEMENT HAST TABLE/////////////////////\n");
 
-    for(t=stat; t!=NULL; t= t->hh.next)
-    {
-        printf("STATEMENT TYPE: %d LINE_NUMBER: %d FUNCTION: %s DATA PTR: %p\n", 
-                t->type, t->line_number, t->function->fh->id, t->statement_data);
+//     for(t=stat; t!=NULL; t= t->hh.next)
+//     {
+//         printf("STATEMENT TYPE: %d LINE_NUMBER: %d FUNCTION: %s DATA PTR: %p\n", 
+//                 t->type, t->line_number, t->function->fh->id, t->statement_data);
 
-    }
-    printf("///////////////////////////////////////////////////////////\n");
-}
+//     }
+//     printf("///////////////////////////////////////////////////////////\n");
+// }
 
-void find_undefined_extends(struct class_list_t *class_list)
-{
-    while(class_list != NULL)
-    {
-        if(class_list->ci->extend != NULL)
-        {
-            if(class_list->ci->extend->extend_class == NULL)
-            {
-                error_type_not_defined(class_list->ci->line_number, class_list->ci->extend->id);
-            }
-            else if(class_list->ci->extend->extend_class->ci->extend != NULL && 
-                    !strcmp(class_list->ci->id, class_list->ci->extend->extend_class->ci->extend->id))
-            {
-                error_circular_extends(class_list->ci->line_number, class_list->ci->id, class_list->ci->extend->id);
-            }
-            else
-            {
-                check_extend_attributes(class_list, class_list->ci->extend->extend_class);
-            }
-        }
-        class_list = class_list->next;
-    }
-}
+// void find_undefined_extends(struct class_list_t *class_list)
+// {
+//     while(class_list != NULL)
+//     {
+//         if(class_list->ci->extend != NULL)
+//         {
+//             if(class_list->ci->extend->extend_class == NULL)
+//             {
+//                 error_type_not_defined(class_list->ci->line_number, class_list->ci->extend->id);
+//             }
+//             else if(class_list->ci->extend->extend_class->ci->extend != NULL && 
+//                     !strcmp(class_list->ci->id, class_list->ci->extend->extend_class->ci->extend->id))
+//             {
+//                 error_circular_extends(class_list->ci->line_number, class_list->ci->id, class_list->ci->extend->id);
+//             }
+//             else
+//             {
+//                 check_extend_attributes(class_list, class_list->ci->extend->extend_class);
+//             }
+//         }
+//         class_list = class_list->next;
+//     }
+// }
 
-void check_extend_attributes(struct class_list_t *base_class, struct class_list_t *parent_class)
-{
-    struct variable_declaration_list_t *var_dec_list = base_class->cb->vdl;
-    struct identifier_list_t *id_list;
+// void check_extend_attributes(struct class_list_t *base_class, struct class_list_t *parent_class)
+// {
+//     struct variable_declaration_list_t *var_dec_list = base_class->cb->vdl;
+//     struct identifier_list_t *id_list;
 
-    while(var_dec_list != NULL)
-    {
-        id_list = var_dec_list->vd->il;
-        while(id_list != NULL)
-        {
-            check_id_against_var_dec_list(id_list->id, parent_class, var_dec_list->vd->line_number);
-            id_list = id_list->next;
-        }
-        var_dec_list = var_dec_list->next;
-    }
-}
+//     while(var_dec_list != NULL)
+//     {
+//         id_list = var_dec_list->vd->il;
+//         while(id_list != NULL)
+//         {
+//             check_id_against_var_dec_list(id_list->id, parent_class, var_dec_list->vd->line_number);
+//             id_list = id_list->next;
+//         }
+//         var_dec_list = var_dec_list->next;
+//     }
+// }
 
-void check_id_against_var_dec_list(char *id, struct class_list_t *parent_class, int line_number)
-{
-    struct variable_declaration_list_t *var_dec_list = parent_class->cb->vdl;
-    struct identifier_list_t *id_list;
-    while(var_dec_list != NULL)
-    {
-        id_list = var_dec_list->vd->il;
-        while(id_list != NULL)
-        {
-            if(!strcmp(id, id_list->id))
-            {
-                error_variable_name_invalid(line_number, id);
-            }
-            id_list = id_list->next;
-        }
-        var_dec_list = var_dec_list->next;
-    }
-}
+// void check_id_against_var_dec_list(char *id, struct class_list_t *parent_class, int line_number)
+// {
+//     struct variable_declaration_list_t *var_dec_list = parent_class->cb->vdl;
+//     struct identifier_list_t *id_list;
+//     while(var_dec_list != NULL)
+//     {
+//         id_list = var_dec_list->vd->il;
+//         while(id_list != NULL)
+//         {
+//             if(!strcmp(id, id_list->id))
+//             {
+//                 error_variable_name_invalid(line_number, id);
+//             }
+//             id_list = id_list->next;
+//         }
+//         var_dec_list = var_dec_list->next;
+//     }
+// }
 
-struct class_table_t* find_hash_object(char *class_list)
-{
-    struct class_table_t *item_ptr = NULL;
-    if(class_list != NULL)
-    {
-        HASH_FIND_STR(class_hash_table, class_list, item_ptr);
-    }
-    return item_ptr;
-}
+// struct class_table_t* find_hash_object(char *class_list)
+// {
+//     struct class_table_t *item_ptr = NULL;
+//     if(class_list != NULL)
+//     {
+//         HASH_FIND_STR(class_hash_table, class_list, item_ptr);
+//     }
+//     return item_ptr;
+// }
 
-void check_class_constructors(struct class_table_t *class_hash_table)
-{
-    struct class_table_t *c;
-    struct attribute_table_t *attr_ptr;
-    for(c=class_hash_table; c != NULL; c=c->hh.next)
-    {
+// void check_class_constructors(struct class_table_t *class_hash_table)
+// {
+//     struct class_table_t *c;
+//     struct attribute_table_t *attr_ptr;
+//     for(c=class_hash_table; c != NULL; c=c->hh.next)
+//     {
 
-        HASH_FIND_STR(c->attribute_hash_table, create_attribute_key(c->id, SCOPE_NFV, NULL), attr_ptr);
-        if(attr_ptr != NULL)
-        {
-            if(strcmp(attr_ptr->type->name, "VOID"))
-            {
-                error_constructor_cannot_have_return_type(attr_ptr->line_number, c->id);
-            }
-            attr_ptr->type->name = (char*)malloc(sizeof(char)*strlen(c->id)+1);
-            strcpy(attr_ptr->type->name, c->id);
-            attr_ptr->type->type = TYPE_DENOTER_T_CLASS_TYPE;
-            attr_ptr->type->data = *((union type_data_union*)malloc(sizeof(struct class_list_t*))+1);
-            attr_ptr->type->data.cl = c->class_list;
-        }
-    }
-}
+//         HASH_FIND_STR(c->attribute_hash_table, create_attribute_key(c->id, SCOPE_NFV, NULL), attr_ptr);
+//         if(attr_ptr != NULL)
+//         {
+//             if(strcmp(attr_ptr->type->name, "VOID"))
+//             {
+//                 error_constructor_cannot_have_return_type(attr_ptr->line_number, c->id);
+//             }
+//             attr_ptr->type->name = (char*)malloc(sizeof(char)*strlen(c->id)+1);
+//             strcpy(attr_ptr->type->name, c->id);
+//             attr_ptr->type->type = TYPE_DENOTER_T_CLASS_TYPE;
+//             attr_ptr->type->data = *((union type_data_union*)malloc(sizeof(struct class_list_t*))+1);
+//             attr_ptr->type->data.cl = c->class_list;
+//         }
+//     }
+// }
 
-char* create_attribute_key(char* id, int scope, char *function_id)
-{
-    int func_len = 0;
-    if(function_id != NULL)
-    {
-        func_len = strlen(function_id);
-    }
+// char* create_attribute_key(char* id, int scope, char *function_id)
+// {
+//     int func_len = 0;
+//     if(function_id != NULL)
+//     {
+//         func_len = strlen(function_id);
+//     }
 
-    char *key = (char *)malloc(strlen(id) + strlen("1") + func_len+1);
-    strcpy(key, id);
+//     char *key = (char *)malloc(strlen(id) + strlen("1") + func_len+1);
+//     strcpy(key, id);
         
-    if(scope)
-    {
-        strcat(key, "1");
-    }
-    else
-    {
-        strcat(key, "0");
-    }
+//     if(scope)
+//     {
+//         strcat(key, "1");
+//     }
+//     else
+//     {
+//         strcat(key, "0");
+//     }
     
-    if(func_len)
-    {
-        strcat(key, function_id);    
-    }
+//     if(func_len)
+//     {
+//         strcat(key, function_id);    
+//     }
     
-    return key;
+//     return key;
 
-}
+// }
 
-struct expression_data_t* check_real_or_integer(struct expression_data_t *expr_1, struct expression_data_t *expr_2, int line_number)
-{
-    if( (is_integer(expr_1->type) || is_real(expr_1->type)) && (is_integer(expr_2->type) || is_real(expr_2->type)))
-    {
-        if(is_real(expr_1->type) || is_real(expr_2->type))
-        {
-            return set_expression_data(EXPRESSION_DATA_REAL, "real");
-        }
-        else
-        {
-            return set_expression_data(EXPRESSION_DATA_INTEGER, "integer");
-        }
-    }
-    else
-    {
-        if(!is_integer(expr_1->type) && !is_real(expr_1->type))
-        {
-            error_datatype_is_not(line_number, expr_1->type, "integer or real");
-        }
-        if(!is_integer(expr_2->type) && !is_real(expr_2->type))
-        {
-            error_datatype_is_not(line_number, expr_2->type, "integer or real");
-        }
-    }
-    return set_expression_data(EXPRESSION_DATA_INTEGER, "integer");
-}
+// struct expression_data_t* check_real_or_integer(struct expression_data_t *expr_1, struct expression_data_t *expr_2, int line_number)
+// {
+//     if( (is_integer(expr_1->type) || is_real(expr_1->type)) && (is_integer(expr_2->type) || is_real(expr_2->type)))
+//     {
+//         if(is_real(expr_1->type) || is_real(expr_2->type))
+//         {
+//             return set_expression_data(EXPRESSION_DATA_REAL, "real");
+//         }
+//         else
+//         {
+//             return set_expression_data(EXPRESSION_DATA_INTEGER, "integer");
+//         }
+//     }
+//     else
+//     {
+//         if(!is_integer(expr_1->type) && !is_real(expr_1->type))
+//         {
+//             error_datatype_is_not(line_number, expr_1->type, "integer or real");
+//         }
+//         if(!is_integer(expr_2->type) && !is_real(expr_2->type))
+//         {
+//             error_datatype_is_not(line_number, expr_2->type, "integer or real");
+//         }
+//     }
+//     return set_expression_data(EXPRESSION_DATA_INTEGER, "integer");
+// }
 
-struct expression_data_t* check_boolean(struct expression_data_t *expr_1, struct expression_data_t *expr_2, int line_number)
-{
-    if(!is_boolean(expr_1->type))
-    {
-        error_datatype_is_not(line_number, expr_1->type, "boolean");
-    }
-    if(!is_boolean(expr_2->type))
-    {
-        error_datatype_is_not(line_number, expr_2->type, "boolean");
-    }
-    return set_expression_data(EXPRESSION_DATA_BOOLEAN, "boolean");
-}
+// struct expression_data_t* check_boolean(struct expression_data_t *expr_1, struct expression_data_t *expr_2, int line_number)
+// {
+//     if(!is_boolean(expr_1->type))
+//     {
+//         error_datatype_is_not(line_number, expr_1->type, "boolean");
+//     }
+//     if(!is_boolean(expr_2->type))
+//     {
+//         error_datatype_is_not(line_number, expr_2->type, "boolean");
+//     }
+//     return set_expression_data(EXPRESSION_DATA_BOOLEAN, "boolean");
+// }
 
-void check_for_same_name_vars(char *class_id, struct attribute_table_t *attr_hash_table)
-{
-    struct attribute_table_t *attr_ptr = NULL;
-    HASH_FIND_STR(attr_hash_table, create_attribute_key(class_id, SCOPE_NFV, NULL), attr_ptr);
-    if(attr_ptr != NULL && !attr_ptr->is_func)
-    {
-        error_variable_name_invalid(attr_ptr->line_number, class_id);
-        exit_on_errors();
-    }
-}
+// void check_for_same_name_vars(char *class_id, struct attribute_table_t *attr_hash_table)
+// {
+//     struct attribute_table_t *attr_ptr = NULL;
+//     HASH_FIND_STR(attr_hash_table, create_attribute_key(class_id, SCOPE_NFV, NULL), attr_ptr);
+//     if(attr_ptr != NULL && !attr_ptr->is_func)
+//     {
+//         error_variable_name_invalid(attr_ptr->line_number, class_id);
+//         exit_on_errors();
+//     }
+// }
 
-void validate_class_attribute_types(struct class_table_t *class_hash_table)
-{
-    struct class_table_t *c;
-    struct attribute_table_t *a;
-    for(c=class_hash_table; c != NULL; c=c->hh.next)
-    {
-        if(c->extend != NULL)
-        {  
-            c->extend = find_hash_object(c->extend->id);   
-        }
-        for(a=c->attribute_hash_table; a != NULL; a=a->hh.next)
-        {
-            validate_type_denoter(a->type, class_hash_table, a->line_number);
-        }
-    }
-}
+// void validate_class_attribute_types(struct class_table_t *class_hash_table)
+// {
+//     struct class_table_t *c;
+//     struct attribute_table_t *a;
+//     for(c=class_hash_table; c != NULL; c=c->hh.next)
+//     {
+//         if(c->extend != NULL)
+//         {  
+//             c->extend = find_hash_object(c->extend->id);   
+//         }
+//         for(a=c->attribute_hash_table; a != NULL; a=a->hh.next)
+//         {
+//             validate_type_denoter(a->type, class_hash_table, a->line_number);
+//         }
+//     }
+// }
 
-void validate_type_denoter(struct type_denoter_t *td, struct class_table_t *class_hash_table, int line_number)
-{
-    switch(td->type)
-    {
-        case TYPE_DENOTER_T_IDENTIFIER:
-            break;
-        case TYPE_DENOTER_T_ARRAY_TYPE:
-            validate_type_denoter(td->data.at->td, class_hash_table, line_number);
-            break;
-        case TYPE_DENOTER_T_CLASS_TYPE:
-            check_for_class_existence(td->name, class_hash_table, line_number);
-            break;
-    }
-}
+// void validate_type_denoter(struct type_denoter_t *td, struct class_table_t *class_hash_table, int line_number)
+// {
+//     switch(td->type)
+//     {
+//         case TYPE_DENOTER_T_IDENTIFIER:
+//             break;
+//         case TYPE_DENOTER_T_ARRAY_TYPE:
+//             validate_type_denoter(td->data.at->td, class_hash_table, line_number);
+//             break;
+//         case TYPE_DENOTER_T_CLASS_TYPE:
+//             check_for_class_existence(td->name, class_hash_table, line_number);
+//             break;
+//     }
+// }
 
-void check_for_class_existence(char *id, struct class_table_t *class_hash_table, int line_number)
-{
-    struct class_table_t *class_ptr = NULL;
-    HASH_FIND_STR(class_hash_table, id, class_ptr);
-    if(class_ptr == NULL)
-    {
-        error_type_not_defined(line_number, id);
-        exit_on_errors();
-    }
-}
+// void check_for_class_existence(char *id, struct class_table_t *class_hash_table, int line_number)
+// {
+//     struct class_table_t *class_ptr = NULL;
+//     HASH_FIND_STR(class_hash_table, id, class_ptr);
+//     if(class_ptr == NULL)
+//     {
+//         error_type_not_defined(line_number, id);
+//         exit_on_errors();
+//     }
+// }
 
-void print_hash_table(struct attribute_table_t* attr)
-{
-    struct attribute_table_t *t;
-    printf("//////////////ATTRIBUTE HASH TABLE//////////////\n");
+// void print_hash_table(struct attribute_table_t* attr)
+// {
+//     struct attribute_table_t *t;
+//     printf("//////////////ATTRIBUTE HASH TABLE//////////////\n");
                    
-    for(t=attr; t != NULL; t=t->hh.next) 
-    {
-        printf("TYPE: %s LINE NUMBER %d SCOPE: %d IS FUNCTION: %d ID: %s ", t->type->name, t->line_number, t->scope, t->is_func, format_attr_id(t->id, t->id_length));
-        if(t->function->fh != NULL)
-        {
-            printf("FUNCTION NAME: %s ", t->function->fh->id);
-        }
-        if(t->params != NULL)
-        {
-            printf(" PARAMETERS: ");
-            struct formal_parameter_section_list_t *p;
-            for(p=t->params; p != NULL; p=p->next)
-            {
-                struct identifier_list_t *il;
-                for(il=p->fps->il; il != NULL; il=il->next)
-                {
-                    printf("%s, ", il->id);
-                }
-                printf(" TYPE: %s ", p->fps->id);
-            }
+//     for(t=attr; t != NULL; t=t->hh.next) 
+//     {
+//         printf("TYPE: %s LINE NUMBER %d SCOPE: %d IS FUNCTION: %d ID: %s ", t->type->name, t->line_number, t->scope, t->is_func, format_attr_id(t->id, t->id_length));
+//         if(t->function->fh != NULL)
+//         {
+//             printf("FUNCTION NAME: %s ", t->function->fh->id);
+//         }
+//         if(t->params != NULL)
+//         {
+//             printf(" PARAMETERS: ");
+//             struct formal_parameter_section_list_t *p;
+//             for(p=t->params; p != NULL; p=p->next)
+//             {
+//                 struct identifier_list_t *il;
+//                 for(il=p->fps->il; il != NULL; il=il->next)
+//                 {
+//                     printf("%s, ", il->id);
+//                 }
+//                 printf(" TYPE: %s ", p->fps->id);
+//             }
             
-        }
-        printf("\n");
-    }
-    printf("/////////////////////////////////\n\n");
-}
+//         }
+//         printf("\n");
+//     }
+//     printf("/////////////////////////////////\n\n");
+// }
 
-void print_class_hash_table(struct class_table_t* class_table)
-{
-    printf("******************* CLASS TABLE **********************\n");
-    struct class_table_t* cl;
-    for(cl=class_table; cl != NULL; cl=cl->hh.next)
-    {
-        printf("ID: %s", cl->id);
-        if(cl->extend != NULL)
-        {
-            printf(" EXTEND: %s", cl->extend->id);
-        }
-        printf("\n\n");
-    }
+// void print_class_hash_table(struct class_table_t* class_table)
+// {
+//     printf("******************* CLASS TABLE **********************\n");
+//     struct class_table_t* cl;
+//     for(cl=class_table; cl != NULL; cl=cl->hh.next)
+//     {
+//         printf("ID: %s", cl->id);
+//         if(cl->extend != NULL)
+//         {
+//             printf(" EXTEND: %s", cl->extend->id);
+//         }
+//         printf("\n\n");
+//     }
 
-}
+// }
 
-int is_boolean(char *id)
-{
-    return !(strcmp(id, "boolean"));
-}
+// int is_boolean(char *id)
+// {
+//     return !(strcmp(id, "boolean"));
+// }
 
-int is_integer(char *id)
-{
-    if(!(strcmp(id, "integer")))
-    {
-        return TRUE;
-    }
-    if(!(strcmp(id, "VAR")))
-    {
-        return TRUE;
-    }
-    return FALSE;
-}
+// int is_integer(char *id)
+// {
+//     if(!(strcmp(id, "integer")))
+//     {
+//         return TRUE;
+//     }
+//     if(!(strcmp(id, "VAR")))
+//     {
+//         return TRUE;
+//     }
+//     return FALSE;
+// }
 
-int is_real(char *id)
-{
-    return !(strcmp(id, "real"));
-}
+// int is_real(char *id)
+// {
+//     return !(strcmp(id, "real"));
+// }
 
-int is_array(char *id)
-{
-    return !(strcmp(id, "array"));
-}
+// int is_array(char *id)
+// {
+//     return !(strcmp(id, "array"));
+// }
 
-int is_true(char *id)
-{
-    if(!(strcmp(id, "true")))
-    {
-        return TRUE;
-    }
-    if(!(strcmp(id, "True")))
-    {
-        return TRUE;
-    }
-    if(!(strcmp(id, "TRUE")))
-    {
-        return TRUE;
-    }
-    return FALSE;
-}
+// int is_true(char *id)
+// {
+//     if(!(strcmp(id, "true")))
+//     {
+//         return TRUE;
+//     }
+//     if(!(strcmp(id, "True")))
+//     {
+//         return TRUE;
+//     }
+//     if(!(strcmp(id, "TRUE")))
+//     {
+//         return TRUE;
+//     }
+//     return FALSE;
+// }
 
-int is_false(char *id)
-{
-    if(!(strcmp(id, "false")))
-    {
-        return TRUE;
-    }
-    if(!(strcmp(id, "False")))
-    {
-        return TRUE;
-    }
-    if(!(strcmp(id, "FALSE")))
-    {
-        return TRUE;
-    }
-    return FALSE;
-}
+// int is_false(char *id)
+// {
+//     if(!(strcmp(id, "false")))
+//     {
+//         return TRUE;
+//     }
+//     if(!(strcmp(id, "False")))
+//     {
+//         return TRUE;
+//     }
+//     if(!(strcmp(id, "FALSE")))
+//     {
+//         return TRUE;
+//     }
+//     return FALSE;
+// }
 
 
-struct expression_data_t* identify_primitive_data(char *id)
-{
-    if(is_integer(id))
-    {
-        return set_expression_data(EXPRESSION_DATA_INTEGER, "integer");
-    }
-    if(is_real(id))
-    {
-        return set_expression_data(EXPRESSION_DATA_REAL, "real");
-    }
-    if(is_boolean(id))
-    {
-        return set_expression_data(EXPRESSION_DATA_BOOLEAN, "boolean");
-    }
-    error_unknown(-1);
-    exit_on_errors();
-    return NULL;
-}
+// struct expression_data_t* identify_primitive_data(char *id)
+// {
+//     if(is_integer(id))
+//     {
+//         return set_expression_data(EXPRESSION_DATA_INTEGER, "integer");
+//     }
+//     if(is_real(id))
+//     {
+//         return set_expression_data(EXPRESSION_DATA_REAL, "real");
+//     }
+//     if(is_boolean(id))
+//     {
+//         return set_expression_data(EXPRESSION_DATA_BOOLEAN, "boolean");
+//     }
+//     error_unknown(-1);
+//     exit_on_errors();
+//     return NULL;
+// }
 
-/* -----------------------------------------------------------------------
- * Printout on error message and exit
- * ----------------------------------------------------------------------- 
- */
+// /* -----------------------------------------------------------------------
+//  * Printout on error message and exit
+//  * ----------------------------------------------------------------------- 
+//  */
 
-void exit_on_errors()
-{
-  if (error_flag == 1) {
-    printf("Errors detected. Exiting.\n");
-    exit(-1);
-  }
-}
+// void exit_on_errors()
+// {
+//   if (error_flag == 1) {
+//     printf("Errors detected. Exiting.\n");
+//     exit(-1);
+//   }
+// }
 
 
 
