@@ -166,7 +166,7 @@ struct attribute_designator_t *set_attribute_designator(struct variable_access_t
 {
     struct attribute_designator_t *ad = new_attribute_designator();
     ad->va = va;
-    ad->id = (char *)malloc(strlen(id)*sizeof(char));
+    ad->id = (char *)malloc(strlen(id)*sizeof(char)+1);
     strcpy(ad->id, id);
 
     if(va->expr != NULL)
@@ -212,13 +212,13 @@ struct class_block_t *set_class_block(struct variable_declaration_list_t *vdl, s
 struct class_identification_t *set_class_identification(char *id, char *extend, int line_number)
 {
     struct class_identification_t *ci = new_class_identification();
-    ci->id = (char *)malloc(strlen(id));
+    ci->id = (char *)malloc(strlen(id)+sizeof(char)+1);
     strcpy(ci->id, id);
     
     if(extend != NULL)
     {
       ci->extend = new_class_extend();
-      ci->extend->id = (char *)malloc(strlen(extend));
+      ci->extend->id = (char *)malloc(strlen(extend)+1);
       strcpy(ci->extend->id, extend);
     }
 
@@ -302,7 +302,7 @@ struct expression_data_t *set_expression_data(float val, char *type)
 {
     struct expression_data_t *ed = new_expression_data();
     ed->val = val;
-    ed->type = (char*)malloc(sizeof(char)*strlen(type));
+    ed->type = (char*)malloc(sizeof(char)*strlen(type)+1);
     strcpy(ed->type, type);
 
     return ed;
@@ -364,7 +364,7 @@ struct formal_parameter_section_t *set_formal_parameter_section(struct identifie
 {
     struct formal_parameter_section_t *fps = new_formal_parameter_section();
     fps->il = il;
-    fps->id = (char *)malloc(strlen(id)*sizeof(char));
+    fps->id = (char *)malloc(strlen(id)*sizeof(char)+1);
     strcpy(fps->id, id);
     fps->is_var = is_var;
 
@@ -411,7 +411,7 @@ struct func_declaration_list_t *set_func_declaration_list(struct function_declar
 struct function_designator_t *set_function_designator(char * id, struct actual_parameter_list_t * apl)
 {
     struct function_designator_t *fd = new_function_designator();
-    fd->id = (char *)malloc(strlen(id)*sizeof(char));
+    fd->id = (char *)malloc(strlen(id)*sizeof(char)+1);
     strcpy(fd->id, id);
     fd->apl = apl;
 
@@ -421,7 +421,7 @@ struct function_designator_t *set_function_designator(char * id, struct actual_p
 struct function_heading_t *set_function_heading(char *id, char *res, struct formal_parameter_section_list_t *fpsl)
 {
     struct function_heading_t *fh = new_function_heading();
-    fh->id = (char*)malloc(strlen(id));
+    fh->id = (char*)malloc(strlen(id)+1);
     strcpy(fh->id, id);
     fh->res = res;
     fh->fpsl = fpsl;
@@ -432,7 +432,7 @@ struct function_heading_t *set_function_heading(char *id, char *res, struct form
 struct identifier_list_t *set_identifier_list(char *id, struct identifier_list_t* next)
 {
     struct identifier_list_t *il = new_identifier_list();
-    il->id = (char *)malloc(strlen(id));
+    il->id = (char *)malloc(strlen(id)+1);
     strcpy(il->id, id);
     il->next = next;
 
@@ -504,7 +504,7 @@ struct method_designator_t *set_method_designator(struct variable_access_t *va, 
 struct object_instantiation_t *set_object_instantiation(char *id, struct actual_parameter_list_t *apl)
 {
     struct object_instantiation_t *oi = new_object_instantiation();
-    oi->id = (char *)malloc(strlen(id));
+    oi->id = (char *)malloc(strlen(id)+sizeof(char)+1);
     strcpy(oi->id, id);
     oi->apl = apl;
 
@@ -613,7 +613,7 @@ struct program_t *set_program(struct program_heading_t *ph, struct class_list_t 
 struct program_heading_t *set_program_heading(char *id, struct identifier_list_t *il)
 {
     struct program_heading_t *ph = new_program_heading();
-    ph->id = (char *)malloc(strlen(id));
+    ph->id = (char *)malloc(strlen(id)+sizeof(char)+1);
     strcpy(ph->id, id);
     ph->il = il;
 
@@ -635,7 +635,7 @@ struct range_t *set_range(struct unsigned_number_t *min, struct unsigned_number_
 
 int * set_sign(int sign)
 {
-  int * s = (int *)malloc(sizeof(int));
+  int * s = (int *)malloc(sizeof(int)+1);
   *s = sign;
 
   return s;
@@ -894,7 +894,7 @@ struct type_denoter_t *set_type_denoter_array(char *name, struct array_type_t *a
     struct type_denoter_t *td = new_type_denoter();
     td->type = TYPE_DENOTER_T_ARRAY_TYPE;
     
-    td->name = (char *)malloc(strlen(name));
+    td->name = (char *)malloc(strlen(name)+sizeof(char)+1);
     strcpy(td->name, name);
     
     td->data.at = at;
@@ -907,7 +907,7 @@ struct type_denoter_t *set_type_denoter_class(char *name, struct class_list_t *c
   struct type_denoter_t *td = new_type_denoter();
   td->type = TYPE_DENOTER_T_CLASS_TYPE;
 
-  td->name = (char *)malloc(strlen(name));
+  td->name = (char *)malloc(strlen(name)+sizeof(char)+1);
   strcpy(td->name, name);
 
   td->data.cl = cl;
@@ -920,10 +920,10 @@ struct type_denoter_t *set_type_denoter_id(char *name, char *id)
     struct type_denoter_t *td = new_type_denoter();
     td->type = TYPE_DENOTER_T_IDENTIFIER;
     
-    td->name = (char *)malloc(strlen(name));
+    td->name = (char *)malloc(strlen(name)+sizeof(char)+1);
     strcpy(td->name, name);
 
-    td->data.id = (char *)malloc(strlen(id));
+    td->data.id = (char *)malloc(strlen(id)+sizeof(char)+1);
     strcpy(td->data.id, id);
 
     return td; 
@@ -948,7 +948,7 @@ struct variable_access_t *set_variable_access_id(char *id, char *recordname, str
 {
     struct variable_access_t *va = new_variable_access();
     va->type = VARIABLE_ACCESS_T_IDENTIFIER;
-    va->data.id = (char *)malloc(strlen(id)*sizeof(char));
+    va->data.id = (char *)malloc(strlen(id)*sizeof(char)+1);
     strcpy(va->data.id, id);
     
     /* Info about this id will be known after parsing */
@@ -1067,8 +1067,8 @@ void add_statement_list_to_sht(struct function_declaration_t *func_dec)
 int* create_attribute_hash_table(struct func_declaration_list_t *func_dec_list, struct variable_declaration_list_t *var_dec_list)
 {
     /* dummy function dec to use in the key of NFV nodes */
-    struct function_declaration_t *NFV_dummy_func_dec = (struct function_declaration_t*)(malloc(sizeof(NFV_dummy_func_dec)));
-    int *arr = (int*)malloc(2*sizeof(int));
+    struct function_declaration_t *NFV_dummy_func_dec = (struct function_declaration_t*)(malloc(sizeof(NFV_dummy_func_dec))+1);
+    int *arr = (int*)malloc(2*sizeof(int)+1);
     arr[0] = add_class_attrs_to_aht(var_dec_list, SCOPE_NFV, NFV_dummy_func_dec);
     arr[1] = add_class_funcs_to_aht(func_dec_list, NFV_dummy_func_dec, 0);
     return arr;
@@ -1193,7 +1193,7 @@ void add_func_var_to_aht(struct variable_declaration_list_t *var_dec_list, int s
 
 struct type_denoter_t* generate_type_denoter(char* return_type)
 {
-    struct type_denoter_t *type = (struct type_denoter_t*)malloc(sizeof(struct type_denoter_t));
+    struct type_denoter_t *type = (struct type_denoter_t*)malloc(sizeof(struct type_denoter_t)+1);
     if( (is_integer(return_type) || is_real(return_type) || is_boolean(return_type)) )
     {
         type->type = TYPE_DENOTER_T_IDENTIFIER;
@@ -1203,7 +1203,7 @@ struct type_denoter_t* generate_type_denoter(char* return_type)
         type->type = -1;
     }
 
-    type->name = (char*)malloc(strlen(return_type)*sizeof(char));
+    type->name = (char*)malloc(strlen(return_type)*sizeof(char)+1);
     strcpy(type->name, return_type);
     return type;
 }
@@ -1287,14 +1287,14 @@ void attribute_hash_table_error(struct attribute_table_t *item_ptr, struct attri
 
 struct class_table_t* create_class_node(struct class_list_t *class_list)
 {
-    struct class_table_t *class = (struct class_table_t*)malloc(sizeof(struct class_table_t));
+    struct class_table_t *class = (struct class_table_t*)malloc(sizeof(struct class_table_t)+1);
     
     class->attribute_hash_table = class_list->cb->attribute_hash_table;
     class->statement_hash_table = class_list->cb->statement_hash_table;
     if(class_list->ci->extend != NULL)
     {
-        class->extend = (struct class_table_t*)malloc(sizeof(struct class_table_t));
-        class->extend->id = (char*)malloc(sizeof(char)*strlen(class_list->ci->extend->id));
+        class->extend = (struct class_table_t*)malloc(sizeof(struct class_table_t)+1);
+        class->extend->id = (char*)malloc(sizeof(char)*strlen(class_list->ci->extend->id)+1);
         strcpy(class->extend->id, class_list->ci->extend->id);
     }
 
@@ -1303,7 +1303,7 @@ struct class_table_t* create_class_node(struct class_list_t *class_list)
     class->class_var_num = class_list->cb->class_var_num;
     class->class_func_num = class_list->cb->class_func_num;
     
-    class->id = (char*)malloc(strlen(class_list->ci->id)*sizeof(char));
+    class->id = (char*)malloc(strlen(class_list->ci->id)*sizeof(char)+1);
     strcpy(class->id, class_list->ci->id);
 
     return class;
@@ -1311,15 +1311,15 @@ struct class_table_t* create_class_node(struct class_list_t *class_list)
 
 struct statement_table_t* create_statement_node(struct statement_t *stat, struct function_declaration_t *function, int line_number)
 {
-    struct statement_table_t *statement = (struct statement_table_t*)malloc(sizeof(struct statement_table_t));
+    struct statement_table_t *statement = (struct statement_table_t*)malloc(sizeof(struct statement_table_t)+1);
     
     statement->type = stat->type;
     statement->line_number = line_number;
     statement->function = function;
-    statement->statement_data = (union statement_union*)malloc(sizeof(stat->data));
+    statement->statement_data = (union statement_union*)malloc(sizeof(stat->data)+1);
     statement->statement_data = &stat->data;
 
-    char *key = (char*)malloc(strlen(statement->function->fh->id) + strlen("1") + sizeof(char *));
+    char *key = (char*)malloc(strlen(statement->function->fh->id) + strlen("1") + sizeof(char *)+1);
     strcpy(key, statement->function->fh->id);
 
     switch(statement->type)
@@ -1357,7 +1357,7 @@ struct attribute_table_t* create_attribute_node(char* id,
                                                 struct function_declaration_t *function,
                                                 int order)
 {
-        struct attribute_table_t *func = (struct attribute_table_t*)malloc(sizeof(struct attribute_table_t));
+        struct attribute_table_t *func = (struct attribute_table_t*)malloc(sizeof(struct attribute_table_t)+1);
         strncpy(func->id, id, strlen(id));
         
 
@@ -1375,7 +1375,7 @@ struct attribute_table_t* create_attribute_node(char* id,
         {
             func_id_length = strlen(function->fh->id);
         }
-        char *key = (char *)malloc(strlen(id) + strlen("1") + func_id_length);
+        char *key = (char *)malloc(strlen(id) + strlen("1") + func_id_length+1);
         strcpy(key, id);
         
         if(scope)
@@ -1507,10 +1507,10 @@ void check_class_constructors(struct class_table_t *class_hash_table)
             {
                 error_constructor_cannot_have_return_type(attr_ptr->line_number, c->id);
             }
-            attr_ptr->type->name = (char*)malloc(sizeof(char)*strlen(c->id));
+            attr_ptr->type->name = (char*)malloc(sizeof(char)*strlen(c->id)+1);
             strcpy(attr_ptr->type->name, c->id);
             attr_ptr->type->type = TYPE_DENOTER_T_CLASS_TYPE;
-            attr_ptr->type->data = *((union type_data_union*)malloc(sizeof(struct class_list_t*)));
+            attr_ptr->type->data = *((union type_data_union*)malloc(sizeof(struct class_list_t*))+1);
             attr_ptr->type->data.cl = c->class_list;
         }
     }
@@ -1524,7 +1524,7 @@ char* create_attribute_key(char* id, int scope, char *function_id)
         func_len = strlen(function_id);
     }
 
-    char *key = (char *)malloc(strlen(id) + strlen("1") + func_len);
+    char *key = (char *)malloc(strlen(id) + strlen("1") + func_len+1);
     strcpy(key, id);
         
     if(scope)

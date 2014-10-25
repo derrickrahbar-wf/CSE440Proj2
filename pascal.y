@@ -642,7 +642,7 @@ relop : EQUAL
 
 identifier : IDENTIFIER
 	{
-        $$ = (char *)malloc(strlen(yytext)*sizeof(char));
+        $$ = (char *)malloc(strlen(yytext)*sizeof(char)+1);
         strcpy($$,yytext);
 	}
  ;
