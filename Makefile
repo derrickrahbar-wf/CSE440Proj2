@@ -41,7 +41,7 @@ all: server
 
 server: yacc lex
 	$(CC) $(CSOURCES) $(CFLAGS)
-	$(CXX) $(OBJECTS) $(CXXSOURCES) -o server
+	$(CXX) -std=c++0x $(OBJECTS) $(CXXSOURCES) -o server
 
 # all:    yacc lex $(OBJECTS) tests_prepare
 # 	g++ -o $(BINARY) $(CFLAGS) y.tab.c lex.yy.o main.o control_flow.o $(OBJECTS)  
