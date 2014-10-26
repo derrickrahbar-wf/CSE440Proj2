@@ -452,11 +452,11 @@ struct expression_data_t* get_factor_expr_data(struct factor_t *factor,
     {
         /* if it has a sign then it must be an integer or real */
         case FACTOR_T_SIGNFACTOR:
-            if(factor->data.f.next->type != FACTOR_T_PRIMARY)
+            if(factor->data.f->next->type != FACTOR_T_PRIMARY)
             {
                 error_too_many_signs(line_number);
             }
-            struct expression_data_t *f_expr = get_factor_expr_data(factor->data.f.next, attr_hash_table, statement_func, line_number);
+            struct expression_data_t *f_expr = get_factor_expr_data(factor->data.f->next, attr_hash_table, statement_func, line_number);
             return check_real_or_integer(f_expr, set_expression_data(EXPRESSION_DATA_INTEGER, "integer"), line_number);
             break;
         case FACTOR_T_PRIMARY:

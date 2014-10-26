@@ -11,20 +11,19 @@ CFLAGS = -g -Wall
 YACCFLAGS = -d -y -v 
 
 OBJECTS = \
+	main.o \
 	symtab.o usrdef.o shared.o rulefuncs.o error.o \
 	semantic.o \
+	control_flow.o \
 
 
-# all:    yacc lex $(OBJECTS) tests_prepare
-# 	g++ -o $(BINARY) $(CFLAGS) y.tab.c lex.yy.o main.o control_flow.o $(OBJECTS)  
-
-all: yacc lex $(OBJECTS) 
-	g++ lex.yy.c main.cpp control_flow.cpp y.tab.c -o opc
+all:    yacc lex $(OBJECTS) tests_prepare
+	g++ -o $(BINARY) $(CFLAGS) y.tab.c lex.yy.c $(OBJECTS)
 
 lex:
 	$(LEX) pascal.l
 
-yacc: 
+yacc:
 	$(YACC) $(YACCFLAGS) pascal.y
 	@# Play tricks with yacc to prepend our shared definitions
 	echo "#include \"shared.h\"" >> y.tab.h.tmp
@@ -32,15 +31,14 @@ yacc:
 	rm y.tab.h
 	mv y.tab.h.tmp y.tab.h
 
-# control_flow.o: control_flow.cpp
-# 	g++ -c -std=c++0x control_flow.cpp
+control_flow.o: control_flow.cpp
+	g++ -c -std=c++0x control_flow.cpp
 
-# main.o: main.cpp
-# 	g++ -c main.cpp
+main.o: main.cpp
+	g++ -c main.cpp
 
 .c.o:
 	$(CC) -c $(CFLAGS) $<
-
 clean:
 	-rm -f core $(BINARY) out.c *~
 	-rm -f lex.yy.c y.tab.c y.tab.h y.tab.h.tmp y.output

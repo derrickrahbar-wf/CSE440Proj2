@@ -9,7 +9,6 @@
 #include "shared.h"
 #include "usrdef.h"
 #include "symtab.h"
-#include "y.tab.h"
 #include "error.h"
 
 

@@ -1,17 +1,29 @@
+extern "C"
+{
+  #include "shared.h"
+  #include "symtab.h"
+  #include "rulefuncs.h"
+  #include "semantic.h"
+  #include "error.h"
+}
+
 #include "control_flow.h"
+#include <sstream>
+#include <string>
 
 using namespace std;
 
-std::vector<BasicBlock> cfg;
+std::vector<BasicBlock*> cfg;
 int current_bb = 0;
 int condition_var_name = 0;
+int IN3ADD_op = -1;
 
 
-std::vector<BasicBlock> create_CFG(statement_sequence_t *ss)
+std::vector<BasicBlock*> create_CFG(statement_sequence_t *ss)
 {
 	BasicBlock *starting_block = new BasicBlock();
 	cfg.push_back(starting_block);
-	add_statements_to_cfg(ss->s);
+	add_statements_to_cfg(ss);
 	print_CFG();
 
 	return cfg;
@@ -22,16 +34,16 @@ void process_statement(statement_t *s)
 	switch(s->type)
 	{
 		case STATEMENT_T_ASSIGNMENT:
-			add_assignment_to_cfg(s.data->as);
+			add_assignment_to_cfg(s->data.as);
 			break;
 		case STATEMENT_T_SEQUENCE:
-			add_statements_to_cfg(s.data->ss);
+			add_statements_to_cfg(s->data.ss);
 			break;
 		case STATEMENT_T_IF:
-			add_if_statement_to_cfg(s.data->is);
+			add_if_statement_to_cfg(s->data.is);
 			break;
 		case STATEMENT_T_WHILE:
-			add_while_statement_to_cfg(s.data->ws);
+			add_while_statement_to_cfg(s->data.ws);
 			break;
 	}
 }
@@ -39,7 +51,8 @@ void process_statement(statement_t *s)
 void add_while_statement_to_cfg(while_statement_t *ws)
 {
 	/* New BB for the condition of the ws */
-	std::vector<int> parent = {current_bb};
+	std::vector<int> parent;
+	parent.push_back(current_bb);
 	add_next_bb(parent);
 	int condition_index = current_bb;
 
@@ -77,17 +90,11 @@ void add_statements_to_cfg(statement_sequence_t *ss)
 
 void add_assignment_to_cfg(assignment_statement_t *as)
 {
-	if(!is_3_address_code(as->e))
-	{
-		RHS *rhs = new RHS();
-		rhs->t1 = gen_term_from_expr(as->e);
-		rhs->op = 
-	}
-	else
-	{
+	Statement *stat = new Statement();
+	stat->lhs = create_id(as->va->data.id);
+	stat->rhs = get_rhs_from_expr(as->e);
 
-	}
-
+	cfg[current_bb]->statements.push_back(stat);
 }
 
 void add_if_statement_to_cfg(if_statement_t *ifs)
@@ -102,24 +109,429 @@ void add_if_statement_to_cfg(if_statement_t *ifs)
 	cfg[parent]->children.push_back(if_st1_index);
 	cfg[parent]->children.push_back(if_st2_index);
 
-	std::vector<int> if_statements_index = {if_st1_index, if_st2_index};
+	std::vector<int> if_statements_index;
+	if_statements_index.push_back(if_st1_index);
+	if_statements_index.push_back(if_st2_index);
 
 	add_next_bb(if_statements_index);
 }
 
 void add_condition_to_bb(expression_t *expr)
 {
-	
+	Statement *stat = new Statement();
+	RHS *rhs = get_rhs_from_expr(expr);
+
+
+	stat->lhs = create_temp_id();
+	stat->rhs = get_rhs_from_expr(expr);
+
+	cfg[current_bb]->statements.push_back(stat);
 }
 
+RHS* get_rhs_from_expr(expression_t *expr)
+{
+	RHS *rhs = new RHS();
+	if(!is_3_address_code(expr))
+	{
+		rhs->t1 = gen_term_from_expr(expr);
+		rhs->op = STAT_NONE;
+		rhs->t2 = NULL;
+	}
+	else
+	{
+		rhs = IN3ADD_gen_rhs_from_3_add_expr(expr);
+	}
+
+	return rhs;
+}
+
+bool is_3_address_code(expression_t *expr)
+{
+	if(expr_term_count(expr) > 2)
+	{
+		return false;
+	}
+	return true;
+}
+
+int expr_term_count(expression_t *expr)
+{
+	if(expr == NULL)
+	{
+		return 0;
+	}
+	return se_term_count(expr->se1) + se_term_count(expr->se2);
+}
+
+int se_term_count(simple_expression_t *se)
+{
+	if(se == NULL)
+	{
+		return 0;
+	}
+
+	return se_term_count(se->next) + term_term_count(se->t);
+}
+
+int term_term_count(term_t *t)
+{
+	if(t == NULL)
+	{
+		return 0;
+	}
+	return factor_term_count(t->f) + term_term_count(t->next);
+}
+
+int factor_term_count(factor_t *f)
+{
+	if(f == NULL)
+	{
+		return 0;
+	}
+
+	switch(f->type)
+	{
+		case FACTOR_T_SIGNFACTOR:
+			return factor_term_count(f->data.f->next);
+			break;
+		case FACTOR_T_PRIMARY:
+			return primary_term_count(f->data.p);
+			break;
+	}
+
+	error_unknown(-1);
+	return -1;
+}
+
+int primary_term_count(primary_t *p)
+{
+	if(p == NULL)
+	{
+		return 0;
+	}
+
+	switch(p->type)
+	{
+		case PRIMARY_T_VARIABLE_ACCESS:
+		case PRIMARY_T_UNSIGNED_CONSTANT:
+			return 1;
+			break;
+		case PRIMARY_T_EXPRESSION:
+			return expr_term_count(p->data.e);
+			break;
+	}
+	
+	error_unknown(-1);
+	return -1;
+}
+
+/* Expression is longer than 3 address base orignally. Must be split up */
+Term* gen_term_from_expr(expression_t *expr)
+{
+	Term *se1_term = gen_term_from_se(expr->se1);
+	
+	if(expr->se2 == NULL)
+	{
+		return se1_term;
+	}
+
+	RHS *rhs = new RHS();
+
+	rhs->t1 = se1_term;
+	rhs->op = relop_to_statop(expr->relop);
+	rhs->t2 = gen_term_from_se(expr->se2);
+
+	char *lhs = create_and_insert_stat(rhs);
+	
+	return create_temp_term(lhs);
+}
+
+Term* gen_term_from_se(simple_expression_t *se)
+{
+	Term *t_term = gen_term_from_term(se->t);
+
+	if(se->next == NULL)
+	{
+		return t_term;
+	}
+
+	RHS *rhs = new RHS();
+
+	rhs->t1 = gen_term_from_se(se->next);
+	rhs->op = addop_to_statop(se->addop);
+	rhs->t2 = t_term;
+
+	char *lhs = create_and_insert_stat(rhs);
+
+	return create_temp_term(lhs);
+}
+
+Term* gen_term_from_term(term_t *t)
+{
+	Term *f_term = gen_term_from_factor(t->f);
+
+	if(t->next == NULL)
+	{
+		return f_term;
+	}
+
+	RHS *rhs = new RHS();
+
+	rhs->t1 = gen_term_from_term(t->next);
+	rhs->op = mulop_to_statop(t->mulop);
+	rhs->t2 = f_term;
+
+	char *lhs = create_and_insert_stat(rhs);
+
+	return create_temp_term(lhs);
+}
+
+Term* gen_term_from_factor(factor_t *f)
+{
+	factor_data_t *f_data;
+	switch(f->type)
+	{
+		case FACTOR_T_SIGNFACTOR:
+			f_data = f->data.f;
+			if(f_data->sign == SIGN_PLUS)
+			{
+				return gen_term_from_factor(f_data->next);
+			}
+			else
+			{
+				return create_negative_factor_term(f_data->next);
+			}
+			break;
+
+		case FACTOR_T_PRIMARY:
+			return gen_term_from_primary(f->data.p);
+			break;
+	}
+
+	error_unknown(-1);
+	return NULL;
+}
+
+Term* gen_term_from_primary(primary_t *p)
+{	
+	Term *t;
+	switch(p->type)
+	{
+		case PRIMARY_T_VARIABLE_ACCESS:
+			t = new Term();
+			t->type = TERM_TYPE_VAR;
+			t->data.var = create_id(p->data.va->data.id);
+			return t;
+			break;
+		
+		case PRIMARY_T_UNSIGNED_CONSTANT:
+			t = new Term();
+			t->type = TERM_TYPE_CONST;
+			t->data.constant = p->data.un->ui;
+			return t;	
+			break;
+		
+		case PRIMARY_T_EXPRESSION:
+			return gen_term_from_expr(p->data.e);
+			break;
+	}
+
+	error_unknown(-1);
+	return NULL;
+}
+
+Term* create_negative_factor_term(factor_t *f)
+{
+	Term *t1 = new Term();
+	t1->sign = STAT_SIGN_NEGATIVE;
+	t1->data.constant = 1;
+	t1->type = TERM_TYPE_CONST;
+
+	RHS *rhs = new RHS();
+	rhs->t1 = t1;
+	rhs->op = STAT_STAR;
+	rhs->t2 = gen_term_from_factor(f);
+
+	char *lhs = create_and_insert_stat(rhs);
+
+	return create_temp_term(lhs);
+}
+
+/* This expression is in 3 address code, parse through to create rhs */
+RHS* IN3ADD_gen_rhs_from_3_add_expr(expression_t *expr)
+{
+	RHS *rhs = new RHS();
+	
+	std::vector<Term*> terms = IN3ADD_get_terms_from_expr(expr);
+
+	rhs->t1 = terms[0];
+	rhs->t2 = terms[1];
+	rhs->op = IN3ADD_op;
+	IN3ADD_op = -1;
+
+	return rhs;
+}
+
+std::vector<Term*> IN3ADD_get_terms_from_expr(expression_t *expr)
+{
+	std::vector<Term*> terms;
+	terms = IN3ADD_get_terms_from_se(expr->se1);
+	
+	if(expr->se2 != NULL)
+	{
+		IN3ADD_op = relop_to_statop(expr->relop);
+		terms.push_back(IN3ADD_get_terms_from_se(expr->se2)[0]);
+	}
+
+	return terms;
+}
+
+std::vector<Term*> IN3ADD_get_terms_from_se(simple_expression_t *se)
+{
+	std::vector<Term*> terms;
+	std::vector<Term*> se_term = IN3ADD_get_terms_from_term(se->t);
+	
+
+	if(se->next != NULL)
+	{
+		IN3ADD_op = addop_to_statop(se->addop);
+		terms = IN3ADD_get_terms_from_se(se->next);
+	}
+
+	terms.insert(terms.end(), se_term.begin(), se_term.end());
+
+	return terms;
+}
+
+std::vector<Term*> IN3ADD_get_terms_from_term(term_t *t)
+{
+	std::vector<Term*> terms;
+	std::vector<Term*> term_factor = IN3ADD_get_terms_from_factor(t->f);
+	
+	if(t->next != NULL)	
+	{
+		IN3ADD_op = mulop_to_statop(t->mulop);
+		terms = IN3ADD_get_terms_from_term(t->next);
+	}
+
+	terms.insert(terms.end(), term_factor.begin(), term_factor.end());
+
+	return terms;
+}
+
+std::vector<Term*> IN3ADD_get_terms_from_factor(factor_t *f)
+{
+	std::vector<Term*> terms;
+
+	switch(f->type)
+	{
+		case FACTOR_T_SIGNFACTOR:
+			terms = IN3ADD_get_terms_from_factor(f->data.f->next);
+			terms[0]->sign = ((f->data.f->sign == SIGN_PLUS) ? STAT_SIGN_POSITIVE : STAT_SIGN_NEGATIVE);
+			break;
+
+		case FACTOR_T_PRIMARY:
+			terms = IN3ADD_get_terms_from_primary(f->data.p);
+			break;
+	}
+
+	return terms;
+}
+
+std::vector<Term*> IN3ADD_get_terms_from_primary(primary_t *p)
+{
+	std::vector<Term*> terms;
+	Term *t;
+	switch(p->type)
+	{
+		case PRIMARY_T_VARIABLE_ACCESS:
+			t = new Term();
+			t->type = TERM_TYPE_VAR;
+			t->data.var = create_id(p->data.va->data.id);
+			terms.push_back(t);
+			break;
+
+		case PRIMARY_T_UNSIGNED_CONSTANT:
+			t = new Term();
+			t->type = TERM_TYPE_CONST;
+			t->data.constant = p->data.un->ui;
+			terms.push_back(t);
+			break;
+
+		case PRIMARY_T_EXPRESSION:
+			terms = IN3ADD_get_terms_from_expr(p->data.e);
+	}
+
+	return terms;
+}
+
+int relop_to_statop(int relop)
+{
+	switch(relop)
+	{
+		case RELOP_EQUAL:
+			return STAT_EQUAL;
+			break;
+		case RELOP_NOTEQUAL:
+			return STAT_NOTEQUAL;
+			break;
+		case RELOP_LT:
+			return STAT_LT;
+			break;
+		case RELOP_GT:
+			return STAT_GT;
+			break;
+		case RELOP_LE:
+			return STAT_LE;
+			break;
+		case RELOP_GE:
+			return STAT_GE;
+			break;	
+	}
+
+	return RELOP_NONE;
+}
+
+int mulop_to_statop(int mulop)
+{
+	switch(mulop)
+	{
+		case MULOP_STAR:
+			return STAT_STAR;
+			break;
+		case MULOP_SLASH:
+			return STAT_SLASH;
+			break;
+		case MULOP_MOD:
+			return STAT_MOD;
+			break;
+	}
+
+	return MULOP_NONE;
+}
+
+int addop_to_statop(int addop)
+{
+	switch(addop)
+	{
+		case ADDOP_PLUS:
+			return STAT_PLUS;
+			break;
+		case ADDOP_MINUS:
+			return STAT_MINUS;
+			break;
+	}
+
+	return ADDOP_NONE;
+}
 
 /* Adds a statement of an if statement (i.e. adds st1 or st2 of an if statement) */
 int add_if_body_to_cfg(statement_t *st, int parent)
 {
 	current_bb++;
-	my_index = current_bb;
+	int my_index = current_bb;
 	BasicBlock *next_block = new BasicBlock();
-	next_block->parent.push_back(parent);
+	next_block->parents.push_back(parent);
 
 	cfg.push_back(next_block);
 
@@ -132,7 +544,7 @@ void add_next_bb(std::vector<int> parents)
 {
 	BasicBlock *new_block = new BasicBlock();
 	current_bb++;
-	for(int i : parents)
+	for(int i=0; i<parents.size(); i++)
 	{
 		cfg[parents[i]]->children.push_back(current_bb);
 		new_block->parents.push_back(parents[i]);
@@ -140,37 +552,85 @@ void add_next_bb(std::vector<int> parents)
 	cfg.push_back(new_block);
 }
 
-void print_CFG()
+char* create_id(char* id)
 {
-	for(int i : cfg)
-	{
-		printf("CURRENT BB INDEX: %d\n", i);
-		printf("Parents: ");
-		for(int x : cfg[i]->parents)
-		{
-			printf("%d, ", cfg[i]->parents[x]);
-		}
-		printf("\nChildren: ");
-		for(int j : cfg[i]->children)
-		{
-			printf("%d, ", cfg[i]->children[j]);
-		}
-		printf("\nStatements: \n");
-		for(int k : cfg[i]->statements)
-		{
-			Statement *stmt = cfg[i]->statements[k];
 
-			if(stmt->type == ASSIGNMENT_CF)
-			{
-				printf("\tASSIGNMENT: %s\n", stmt.data->va.data->id);
-			}
-			else
-			{
-				printf("\tPRINT: %s\n", stmt.data->va.data->id);
-			}
-			
-		}
+	char *new_id = (char*)malloc(sizeof(char)*strlen(id) + 1);
+	strncpy(new_id, id, strlen(id));
 
-		printf("-------------------------------------------------------------\n\n");
-	}
+	return new_id;
 }
+
+char* create_temp_id()
+{
+	char id = '$';
+	char *id_ptr = &id;
+	stringstream ss;
+	ss << condition_var_name;
+	string sstr = ss.str();
+	
+	char id_num[sstr.length() + 1];
+	for(int i = 0; i < sstr.length(); i++)
+	{
+		id_num[i] = sstr[i];
+	} 
+
+	id_ptr = strcat(id_ptr, id_num);
+	condition_var_name++;
+
+	return create_id(id_ptr);
+}
+
+Term* create_temp_term(char* id)
+{
+	Term *t = new Term();
+	t->type = TERM_TYPE_VAR;
+	t->data.var = create_id(id);
+
+	return t;
+}
+
+char* create_and_insert_stat(RHS *rhs)
+{
+	Statement *stat = new Statement();
+	stat->lhs = create_temp_id();
+	stat->rhs = rhs;
+
+	cfg[current_bb]->statements.push_back(stat); 
+	return stat->lhs;
+}
+
+// void print_CFG()
+// {
+// 	for(int i = 0; i < cfg.size(); i++)
+// 	{
+// 		printf("CURRENT BB INDEX: %d\n", i);
+// 		printf("Parents: ");
+// 		for(int x : cfg[i]->parents)
+// 		{
+// 			printf("%d, ", cfg[i]->parents[x]);
+// 		}
+// 		printf("\nChildren: ");
+// 		for(int j : cfg[i]->children)
+// 		{
+// 			printf("%d, ", cfg[i]->children[j]);
+// 		}
+// 		printf("\nStatements: \n");
+// 		for(int k : cfg[i]->statements)
+// 		{
+// 			Statement *stmt = cfg[i]->statements[k];
+
+// 			if(stmt->type == ASSIGNMENT_CF)
+// 			{
+// 				printf("\tASSIGNMENT: %s\n", stmt->data.va->data.id);
+// 			}
+// 			else
+// 			{
+// 				printf("\tPRINT: %s\n", stmt->data.va->data.id);
+// 			}
+			
+// 		}
+
+// 		printf("-------------------------------------------------------------\n\n");
+// 	}
+// }
