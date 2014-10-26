@@ -16,13 +16,39 @@ std::vector<BasicBlock*> cfg;
 int current_bb = 0;
 int condition_var_name = 0;
 int IN3ADD_op = -1;
+int extended_bb_label = 1;
 
+statement_sequence_t * reverse_ss(statement_sequence_t* ss)
+{
+	statement_sequence_t *ss_temp1= ss, *ss_previous= NULL;
+
+	while(ss != NULL && ss->next != NULL)
+	{
+		ss_temp1 = ss->next;
+		ss->next = ss_previous;
+		ss_previous = ss;
+		ss = ss_temp1;
+	}
+
+	ss->next = ss_previous;
+	return ss;
+}
+
+void print_statement_list(statement_sequence_t* ss)
+{
+	while(ss != NULL)
+	{
+		cout << ss->line_number<< endl;
+		ss = ss->next;
+	}
+}
 
 std::vector<BasicBlock*> create_CFG(statement_sequence_t *ss)
 {
 	BasicBlock *starting_block = new BasicBlock();
 	cfg.push_back(starting_block);
 	add_statements_to_cfg(ss);
+	define_extended_bbs();
 	print_CFG();
 
 	return cfg;
@@ -51,8 +77,12 @@ void add_while_statement_to_cfg(while_statement_t *ws)
 {
 	/* New BB for the condition of the ws */
 	std::vector<int> parent;
-	parent.push_back(current_bb);
-	add_next_bb(parent);
+	
+	if(cfg[current_bb]->statements.size() != 0)
+	{
+		parent.push_back(current_bb);
+		add_next_bb(parent);
+	}
 	int condition_index = current_bb;
 
 	/* Add that condition to the newly created BB from above */
@@ -64,6 +94,7 @@ void add_while_statement_to_cfg(while_statement_t *ws)
 
 	/* Add new BB for ws body */
 	add_next_bb(parent);
+	cout << "While statement type : " << ws->s->type << endl;
 	process_statement(ws->s);
 	
 	/* Ending block of while body is set as a parent of the condition BB */
@@ -80,6 +111,8 @@ void add_while_statement_to_cfg(while_statement_t *ws)
 
 void add_statements_to_cfg(statement_sequence_t *ss)
 {
+	ss = reverse_ss(ss);
+
 	while(ss != NULL)
 	{
 		process_statement(ss->s);
@@ -122,7 +155,7 @@ void add_condition_to_bb(expression_t *expr)
 
 
 	stat->lhs = create_temp_id();
-	stat->rhs = get_rhs_from_expr(expr);
+	stat->rhs = rhs;
 
 	cfg[current_bb]->statements.push_back(stat);
 }
@@ -292,6 +325,7 @@ Term* gen_term_from_factor(factor_t *f)
 	{
 		case FACTOR_T_SIGNFACTOR:
 			f_data = f->data.f;
+			cout << "WE ARE 321 with sign: " << f_data->sign << endl;
 			if(f_data->sign == SIGN_PLUS)
 			{
 				return gen_term_from_factor(f_data->next);
@@ -555,29 +589,21 @@ char* create_id(char* id)
 {
 
 	char *new_id = (char*)malloc(sizeof(char)*strlen(id) + 1);
-	strncpy(new_id, id, strlen(id));
-
+	strncpy(new_id, id, strlen(id) +1);
 	return new_id;
 }
 
 char* create_temp_id()
 {
-	char id = '$';
-	char *id_ptr = &id;
-	stringstream ss;
-	ss << condition_var_name;
-	string sstr = ss.str();
-	
-	char id_num[sstr.length() + 1];
-	for(int i = 0; i < sstr.length(); i++)
-	{
-		id_num[i] = sstr[i];
-	} 
+	char s[32];
+	int num_len = sprintf(s, "%d", condition_var_name);
 
-	id_ptr = strcat(id_ptr, id_num);
+	char actual_id[num_len + 1];
+	sprintf(actual_id, "$%d", condition_var_name);
+
 	condition_var_name++;
 
-	return create_id(id_ptr);
+	return create_id(actual_id);
 }
 
 Term* create_temp_term(char* id)
@@ -599,37 +625,204 @@ char* create_and_insert_stat(RHS *rhs)
 	return stat->lhs;
 }
 
+void define_extended_bbs()
+{
+	bool changed = true;
+	int bb_index = 0;
+	extended_bb_label = 1; //ensure we are starting at 1 
+	while(changed)
+	{	
+		changed = false;
+		changed = extended_bb_alg(bb_index, changed);
+	}
+}
+
+bool is_separated_from_parents(int bb_index)
+{
+	int ebb = cfg[bb_index]->extended_bb;
+	int parent_index;
+	for(int i=0 ; i<cfg[bb_index]->parents.size(); i++)
+	{
+		parent_index = cfg[bb_index]->parents[i];
+		if(ebb == cfg[parent_index]->extended_bb)
+		{
+			/* if the parent is larger, will be a condition
+			let it stay the same if needed */
+			if(parent_index < bb_index)
+			{
+				return false;
+			}
+			
+		}
+	}
+
+	return true;
+}
+
+
+bool extended_bb_alg(int bb_index, bool changed)
+{
+	if(has_one_parent(bb_index))
+	{
+		/*handle root node cases*/
+		if(bb_index == 0 && cfg[bb_index]->extended_bb == 0)
+		{
+			cfg[bb_index]->extended_bb = extended_bb_label;
+			extended_bb_label++;
+			changed= true;
+		}
+
+	}	
+	else if(!is_separated_from_parents(bb_index))
+	{
+		cfg[bb_index]->extended_bb = extended_bb_label;
+		extended_bb_label++;
+		changed = true;
+	}		
+
+	changed |= populate_children_bbs(bb_index, cfg[bb_index]->extended_bb, changed);
+
+	int child_index;
+	for(int i=0;i<cfg[bb_index]->children.size() ; i++)
+	{
+		/* To avoid loop we wont ever process children with 
+		smaller indexes than their parent b/c this would mean
+		they are the condition to a while loop and would already
+		be processed before this */
+		child_index = cfg[bb_index]->children[i];
+		if(child_index > bb_index)
+		{
+			changed |= extended_bb_alg(child_index, changed);
+		}
+		
+	}
+
+	return changed;
+}
+
+bool has_one_parent(int bb_index)
+{
+	return (cfg[bb_index]->parents.size() > 1)? false : true; 
+}
+
+bool populate_children_bbs(int parent_index, int parent_ebb, bool changed)
+{
+	int child_index;
+	for(int i=0 ; i < cfg[parent_index]->children.size();i++)
+	{
+		child_index = cfg[parent_index]->children[i];
+
+		/* set child ebb to parents ebb*/
+		if(cfg[child_index]->extended_bb == 0)
+		{
+			cfg[child_index]->extended_bb = parent_ebb;
+			changed = true;
+		}		
+	}
+
+	return changed;
+}
+
 void print_CFG()
 {
-	// for(int i = 0; i < cfg.size(); i++)
-	// {
-	// 	printf("CURRENT BB INDEX: %d\n", i);
-	// 	printf("Parents: ");
-	// 	for(int x : cfg[i]->parents)
-	// 	{
-	// 		printf("%d, ", cfg[i]->parents[x]);
-	// 	}
-	// 	printf("\nChildren: ");
-	// 	for(int j : cfg[i]->children)
-	// 	{
-	// 		printf("%d, ", cfg[i]->children[j]);
-	// 	}
-	// 	printf("\nStatements: \n");
-	// 	for(int k : cfg[i]->statements)
-	// 	{
-	// 		Statement *stmt = cfg[i]->statements[k];
+	for(int i = 0; i < cfg.size(); i++)
+	{
+		printf("CURRENT BB INDEX: %d\n", i);
+		cout << "Extended bb: " << cfg[i]->extended_bb << endl;
+		printf("Parents: ");
+		for(int x=0 ; x <cfg[i]->parents.size() ; x++)
+		{
+			printf("%d, ", cfg[i]->parents[x]);
+		}
+		printf("\nChildren: ");
+		for(int j=0 ;j < cfg[i]->children.size(); j++)
+		{
+			printf("%d, ", cfg[i]->children[j]);
+		}
+		printf("\nStatements: \n");
+		for(int k=0 ; k< cfg[i]->statements.size(); k++)
+		{
+			Statement *stmt = cfg[i]->statements[k];
+			string op;
+			switch(stmt->rhs->op)
+			{
+				case STAT_PLUS :
+					op = "+";
+					break;
+				case STAT_MINUS:
+					op = "-";
+					break;
+				case STAT_STAR:
+					op = "*";
+					break;
+				case STAT_SLASH: 
+					op = "/";
+					break;
+				case STAT_MOD:
+					op = "\%";
+					break;
+				case STAT_EQUAL:
+					op = "==";
+					break;
+				case STAT_NOTEQUAL:
+					op = "!=";
+					break;
+				case STAT_LT: 
+					op = "<";
+					break;
+				case STAT_GT: 
+					op = ">";
+					break;
+				case STAT_LE:
+					op = "<=";
+					break;
+				case STAT_GE :
+					op = ">=";
+					break;
+				case STAT_NONE:
+					op = "----";
+					break;
+			}
+			char *t1, *t2;
+			string str;
+			if(stmt->rhs->t1->type == TERM_TYPE_CONST)
+			{
+				stringstream ss;
+				ss << stmt->rhs->t1->data.constant;
+				str = ss.str();
+				t1 = new char [str.length()+1];
+				strcpy(t1, str.c_str());
+			}
+			else
+			{
+				t1 = stmt->rhs->t1->data.var;
+			}
 
-	// 		if(stmt->type == ASSIGNMENT_CF)
-	// 		{
-	// 			printf("\tASSIGNMENT: %s\n", stmt->data.va->data.id);
-	// 		}
-	// 		else
-	// 		{
-	// 			printf("\tPRINT: %s\n", stmt->data.va->data.id);
-	// 		}
+			if(stmt->rhs->t2 != NULL)
+			{
+				if(stmt->rhs->t2->type == TERM_TYPE_CONST)
+				{
+					stringstream ss;
+					ss << stmt->rhs->t2->data.constant;
+					str = ss.str();
+					t2 = new char [str.length()+1];
+					strcpy(t2, str.c_str());
+				}
+				else
+				{
+					t2 = stmt->rhs->t2->data.var;
+				}
+			}
+
+			printf("\tASSIGNMENT: %s = %s ", stmt->lhs, t1);
+			if(stmt->rhs->t2 != NULL)
+			{
+				printf(" %s %s", op.c_str(), t2);
+			}
+			cout << endl;
 			
-	// 	}
+		}
 
-	// 	printf("-------------------------------------------------------------\n\n");
-	// }
+		printf("-------------------------------------------------------------\n\n");
+	}
 }

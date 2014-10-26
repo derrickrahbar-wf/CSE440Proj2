@@ -53,11 +53,14 @@ class BasicBlock {
 	public:
 		std::vector<int> parents;
 		std::vector<int> children;
-		std::vector<Statement*> statements;	
+		std::vector<Statement*> statements;
+		int extended_bb; //ranged from 1-n 
 };
 
 
 
+statement_sequence_t * reverse_ss(statement_sequence_t* ss);
+void print_statement_list(statement_sequence_t* ss);
 std::vector<BasicBlock*> create_CFG(statement_sequence_t *ss);
 void process_statement(statement_t *s);
 void add_while_statement_to_cfg(while_statement_t *ws);
@@ -92,8 +95,14 @@ char* create_id(char* id);
 char* create_temp_id();
 Term* create_temp_term(char* id);
 char* create_and_insert_stat(RHS *rhs);
+void define_extended_bbs();
+bool extended_bb_alg(int bb_index, bool changed);
+bool has_one_parent(int bb_index);
+bool populate_children_bbs(int parent_index, int parent_ebb, bool changed);
 void print_CFG();
-Term* gen_term_from_primary(primary_t *p);
 
+
+/*ONE IT DOESNT CATCH*/
+Term* gen_term_from_primary(primary_t *p);
 
 #endif /* CONTROL_FLOW_H */

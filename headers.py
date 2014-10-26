@@ -1,4 +1,4 @@
-with open("test.txt", "r") as file:
+with open("control_flow.cpp", "r") as file:
 	data = file.readlines()
 
 b = []
@@ -10,8 +10,10 @@ for a, i in enumerate(data):
 c = []
 
 for a in b:
-	c.append(a.replace("\n", ":"))
+	c.append(a.replace("\n", ";"))
 
 with open("headers.txt", 'wb') as f:
-	for item in c:
-		f.write("%s\n" % item)
+    for item in c:
+        if item != 'extern "C";':
+            f.write("%s\n" % item)
+
