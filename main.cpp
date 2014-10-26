@@ -10,16 +10,21 @@
  *
  * Implements an object oriented pascal compiler
  */
+
+
+
 extern "C"
 {
+    
   #include "shared.h"
   #include "symtab.h"
   #include "rulefuncs.h"
-  #include "semantic.h"
+   extern struct program_t *program;
+
+  extern void yyparse();
 }
 
 #include "control_flow.h"
-
 
 /* Flags if any errors occured */
 int error_flag = 0;
@@ -29,9 +34,7 @@ struct args_t cmdArgs;
 
 /* This is the data structure we are left with (the parse tree) after
    yyparse() is done . */
-extern struct program_t *program;
 
-extern void yyparse();
 
 
 /* ----------------------------------------------------------------------- 

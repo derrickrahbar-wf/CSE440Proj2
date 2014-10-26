@@ -1,12 +1,11 @@
 extern "C"
 {
-  #include "shared.h"
-  #include "symtab.h"
-  #include "rulefuncs.h"
-  #include "semantic.h"
-  #include "error.h"
+	#include "shared.h"
+	#include "symtab.h"
+	#include "rulefuncs.h"
+	#include "semantic.h"
+	#include "error.h"
 }
-
 #include "control_flow.h"
 #include <sstream>
 #include <string>
@@ -600,37 +599,37 @@ char* create_and_insert_stat(RHS *rhs)
 	return stat->lhs;
 }
 
-// void print_CFG()
-// {
-// 	for(int i = 0; i < cfg.size(); i++)
-// 	{
-// 		printf("CURRENT BB INDEX: %d\n", i);
-// 		printf("Parents: ");
-// 		for(int x : cfg[i]->parents)
-// 		{
-// 			printf("%d, ", cfg[i]->parents[x]);
-// 		}
-// 		printf("\nChildren: ");
-// 		for(int j : cfg[i]->children)
-// 		{
-// 			printf("%d, ", cfg[i]->children[j]);
-// 		}
-// 		printf("\nStatements: \n");
-// 		for(int k : cfg[i]->statements)
-// 		{
-// 			Statement *stmt = cfg[i]->statements[k];
+void print_CFG()
+{
+	// for(int i = 0; i < cfg.size(); i++)
+	// {
+	// 	printf("CURRENT BB INDEX: %d\n", i);
+	// 	printf("Parents: ");
+	// 	for(int x : cfg[i]->parents)
+	// 	{
+	// 		printf("%d, ", cfg[i]->parents[x]);
+	// 	}
+	// 	printf("\nChildren: ");
+	// 	for(int j : cfg[i]->children)
+	// 	{
+	// 		printf("%d, ", cfg[i]->children[j]);
+	// 	}
+	// 	printf("\nStatements: \n");
+	// 	for(int k : cfg[i]->statements)
+	// 	{
+	// 		Statement *stmt = cfg[i]->statements[k];
 
-// 			if(stmt->type == ASSIGNMENT_CF)
-// 			{
-// 				printf("\tASSIGNMENT: %s\n", stmt->data.va->data.id);
-// 			}
-// 			else
-// 			{
-// 				printf("\tPRINT: %s\n", stmt->data.va->data.id);
-// 			}
+	// 		if(stmt->type == ASSIGNMENT_CF)
+	// 		{
+	// 			printf("\tASSIGNMENT: %s\n", stmt->data.va->data.id);
+	// 		}
+	// 		else
+	// 		{
+	// 			printf("\tPRINT: %s\n", stmt->data.va->data.id);
+	// 		}
 			
-// 		}
+	// 	}
 
-// 		printf("-------------------------------------------------------------\n\n");
-// 	}
-// }
+	// 	printf("-------------------------------------------------------------\n\n");
+	// }
+}

@@ -1,3 +1,4 @@
+CXX = g++
 CC = gcc
 # This is the name of our compiler
 BINARY = opc
@@ -7,19 +8,46 @@ DIFF = diff
 
 
 # Flags
-CFLAGS = -g -Wall
+CFLAGS = -g -Wall -c 
+CXXFLAGS = -Wall -D__STDC_LIMIT_MACROS
 YACCFLAGS = -d -y -v 
 
-OBJECTS = \
-	symtab.o usrdef.o shared.o rulefuncs.o error.o \
-	semantic.o \
+CSOURCES = \
+	symtab.c\
+	usrdef.c \
+	rulefuncs.c \
+	error.c \
+	shared.c \
+	y.tab.c \
+	lex.yy.c\
 
+CXXSOURCES = \
+	main.cpp \
+	control_flow.cpp 
+
+
+
+OBJECTS =   \
+	symtab.o\
+	usrdef.o \
+	rulefuncs.o \
+	error.o \
+	shared.o \
+	y.tab.o \
+	lex.yy.o\
+
+all: server
+
+
+server: yacc lex
+	$(CC) $(CSOURCES) $(CFLAGS)
+	$(CXX) $(OBJECTS) $(CXXSOURCES) -o server
 
 # all:    yacc lex $(OBJECTS) tests_prepare
 # 	g++ -o $(BINARY) $(CFLAGS) y.tab.c lex.yy.o main.o control_flow.o $(OBJECTS)  
 
-all: yacc lex $(OBJECTS) 
-	g++ lex.yy.c main.cpp control_flow.cpp y.tab.c -o opc
+# all: yacc lex $(OBJECTS) 
+# 	g++ -o opc main.o control_flow.o -x c lex.yy.c y.tab.c $(OBJECTS)
 
 lex:
 	$(LEX) pascal.l
@@ -38,13 +66,15 @@ yacc:
 # main.o: main.cpp
 # 	g++ -c main.cpp
 
-.c.o:
-	$(CC) -c $(CFLAGS) $<
+# .c.o:
+# 	$(CC) -c $(CFLAGS) $<
 
 clean:
 	-rm -f core $(BINARY) out.c *~
 	-rm -f lex.yy.c y.tab.c y.tab.h y.tab.h.tmp y.output
 	-rm -f $(OBJECTS)
+	-rm -f main.o control_flow.o 
+	-rm -f server
 	-rm -f tests_lib_shared_auto.inc
 	-rm -f tests_semantic/results/$(BINARY).{log,sum}
 	-rm -f tests_semantic/*.output

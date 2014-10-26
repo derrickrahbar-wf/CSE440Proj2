@@ -16,7 +16,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "./uthash/src/uthash.h"
 
 #define VA_SCOPE_MAIN 1
 
@@ -563,7 +562,7 @@ struct attribute_table_t{
     int line_number;
     int is_func;
     struct formal_parameter_section_list_t *params;
-    UT_hash_handle hh; /* defines structure as a hashable object */
+    // UT_hash_handle hh; /* defines structure as a hashable object */
     int scope;
     struct function_declaration_t *function;
     struct expression_data_t *expr;
@@ -580,7 +579,7 @@ struct statement_table_t{
     
     union statement_union* statement_data;
 
-  UT_hash_handle hh; /* defines structure as a hashable object */
+  // UT_hash_handle hh;  defines structure as a hashable object 
   char string_key[31 + sizeof(union statement_union*)]; /*key for this statement*/
 };
 
@@ -591,7 +590,7 @@ struct class_table_t {
     int class_func_num;
     int class_var_num;
     struct statement_table_t *statement_hash_table;
-    UT_hash_handle hh; /* defines structure as a hashable object */
+    // UT_hash_handle hh;  defines structure as a hashable object 
     struct class_list_t *class_list;
     char *id;
 };

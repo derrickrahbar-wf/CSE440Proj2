@@ -15,8 +15,7 @@
 *
 */
 
-extern "C"
-{
+
 #include "shared.h"
 #include "rulefuncs.h"
 
@@ -27,8 +26,6 @@ extern "C"
   extern int line_number;       /* Holds the current line number; specified
 				   in the lexer */
   struct program_t *program;    /* points to our program */
-}
-
 %}
 
 %token AND ARRAY ASSIGNMENT CLASS COLON COMMA DIGSEQ
