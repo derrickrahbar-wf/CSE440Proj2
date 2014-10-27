@@ -43,6 +43,11 @@ class RHS {
 		Term *t2;
 };
 
+class Val_obj {
+	int val_num;
+	bool is_const;
+};
+
 class Statement {
 	public:
 		char *lhs;

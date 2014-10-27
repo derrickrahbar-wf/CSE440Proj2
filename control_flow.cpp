@@ -18,6 +18,11 @@ int condition_var_name = 0;
 int IN3ADD_op = -1;
 int extended_bb_label = 1;
 
+std::vector<std::unordered_map<string, int>> expr_tables;
+std::vector<std::unordered_map<string, Val_obj>> id_tables;
+std::vector<std::unordered_map<int, int>> const_tables;
+
+
 statement_sequence_t * reverse_ss(statement_sequence_t* ss)
 {
 	statement_sequence_t *ss_temp1= ss, *ss_previous= NULL;
@@ -51,7 +56,38 @@ std::vector<BasicBlock*> create_CFG(statement_sequence_t *ss)
 	define_extended_bbs();
 	print_CFG();
 
+	value_numbering();
+
 	return cfg;
+}
+
+void value_numbering()
+{
+	for(int i = 0; i < cfg.size(); i++)
+	{
+		create_tables_for_bb(i);
+	}
+}
+
+void create_tables_for_bb(int cfg_index)
+{
+	BasicBlock *bb = cfg[cfg_index];
+
+	for(int i=0; i < bb->parents.size(); i++)
+	{
+		int parent_index = bb->parents[i];
+		if(cfg_index > parent_index && bb->extended_bb == cfg[parent_index]->extended_bb)
+		{
+			copy_parent_tables_to_child(parent_index, cfg_index);
+		}
+	}
+
+	process_bb_stats_for_tables(cfg_index);
+}
+
+void copy_parent_tables_to_child(int parent_index, int child_index)
+{
+	
 }
 
 void process_statement(statement_t *s)
