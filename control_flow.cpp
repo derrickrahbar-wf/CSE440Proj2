@@ -19,7 +19,7 @@ int IN3ADD_op = -1;
 int extended_bb_label = 1;
 
 std::vector<std::unordered_map<string, int>> expr_tables;
-std::vector<std::unordered_map<string, Val_obj>> id_tables;
+std::vector<std::unordered_map<string, Val_obj*>> id_tables;
 std::vector<std::unordered_map<int, int>> const_tables;
 
 
@@ -87,7 +87,131 @@ void create_tables_for_bb(int cfg_index)
 
 void copy_parent_tables_to_child(int parent_index, int child_index)
 {
+	for ( auto it = expr_tables[parent_index].begin(); it != expr_tables[parent_index].end(); ++it )
+		expr_tables[child_index].insert(it->first, it->second);
+
+	for ( auto it = id_tables[parent_index].begin(); it != id_tables[parent_index].end(); ++it )
+	{
+		Val_obj *tmp = new Val_obj();
+		tmp->val_num = it->second->val_num;
+		tmp->is_const = it->second->is_const;
+
+		id_tables[child_index].insert(it->fist, tmp);
+	}
+
+	for ( auto it = const_tables[parent_index].begin(); it != const_tables[parent_index].end(); ++it )
+		const_tables[child_index].insert(it->fist, it->second);
+}
+
+void process_bb_stats_for_tables(int index)
+{
+	BasicBlock *bb = cfg[index];
+
+	for(int i = 0; i < bb->statements.size(); i++)
+	{
+		process_statement_for_tables(bb->statement[i], index);
+	}
+}
+
+void process_statement_for_tables(Statement *stat, int table_index)
+{
+	if(stat->rhs->t2 == NULL)
+	{
+		process_singular_stat_for_tables(stat, table_index);
+	}
+	else
+	{
+		process_multi_stat_for_tables(stat, table_index);
+	}
+}
+
+void process_multi_stat_for_tables(Statement *stat, int table_index)
+{
+	Term *t1 = stat->rhs->t1;
+	Term *t2 = stat->rhs->t2;
+	RHS *rhs = stat->rhs;
+
+	if(t2->type == TERM_TYPE_CONST && t1->type == TERM_TYPE_CONST)
+	{
+		int const_val_num = calc_const_and_add_to_table(t1->data.constant, rhs->op, t2->data.constant, table_index);
+		optimize_stat_with_const(stat, const_val_num, table_index);
+		
+		Val_obj *vo = new Val_obj();
+		vo->is_const = true;
+		vo->val_num = const_val_num;
+		
+		string key(stat->lhs);
+		id_tables[table_index][key] = vo; 
+	}
+	else if(t2->type == TERM_TYPE_CONST || t1->type == TERM_TYPE_CONST)
+	{
+		int const_val_num;
+		Val_obj *vo;
+		if(t1->type == TERM_TYPE_CONST)
+		{
+			const_val_num = eval_const(t2->data.constant, table_index);
+			vo = eval_id(t1->data.var, table_index);
+
+			if(vo->is_const)
+			{
+				std::unordered_map<int, int>::const_iterator check = const_table_find(vo->val_num, table_index);
+				int c_v_num = calc_const_and_add_to_table(t1->data.constant, rhs->op, check->first, table_index);
+			}
+		}
+		else
+		{
+			const_val_num = eval_const(t1->data.constant, table_index);
+			vo = eval_id(t2->data.var, table_index);	
+		}
+		
+	}
+
+}
+
+void process_singular_stat_for_tables(Statement *stat, int table_index)
+{
+	Val_obj *valObj;
+	if(stat->t1->type == TERM_TYPE_CONST)
+	{
+		valObj = new Val_obj();
+		valObj->val_num = eval_const(stat->t1->data.constant, table_index);
+		valObj->is_const = true;
+	}
+	else
+	{
+		valObj = eval_id(stat->t1->data.var, table_index);
+		if(valObj->is_const)
+		{
+			optimize_singl_stat_with_const(stat, valObj->val_num, table_index);
+		}
+	}
 	
+	string key(stat->lhs);
+	id_tables[table_index][key] = valObj;
+}
+
+void optimize_stat_with_const(Statement *stat, int val_num, int table_index)
+{
+	std::unordered_map<int, int>::const_iterator check = const_table_find(val_num, table_index);
+	Term *t = new Term();
+
+	t->type = TERM_TYPE_CONST;
+	t->data.constant = check->first;
+
+	stat->rhs->t2 = NULL;
+	stat->rhs->op = STAT_NONE;
+	stat->rhs->t1 = t;
+}
+
+std::unordered_map<int, int>::const_iterator const_table_find(int val_num, int table_index)
+{
+	for ( auto it = const_tables[table_index].begin(); it != const_tables[table_index].end(); ++it )
+	{
+		if(it->second == val_num)
+			return it;
+	}
+
+	return const_tables[table_index].end();
 }
 
 void process_statement(statement_t *s)
