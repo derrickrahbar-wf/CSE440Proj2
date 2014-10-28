@@ -1,0 +1,15 @@
+1) If we can optimize a boolean expression (for conditions) we will set the expression to 1 for true and 0 for false in the optimized statement
+
+
+
+
+
+
+
+
+
+
+
+
+
+
