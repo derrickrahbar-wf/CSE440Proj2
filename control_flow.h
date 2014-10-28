@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <iostream>
+#include <unordered_map>
 
 #define STAT_PLUS 0
 #define STAT_MINUS 1
@@ -23,6 +24,7 @@
 #define TERM_TYPE_CONST 0
 #define TERM_TYPE_VAR 1
 
+using namespace std;
 
 class Term {
 	public:
@@ -44,8 +46,9 @@ class RHS {
 };
 
 class Val_obj {
-	int val_num;
-	bool is_const;
+	public:
+		int val_num;
+		bool is_const;
 };
 
 class Statement {
@@ -67,6 +70,36 @@ class BasicBlock {
 statement_sequence_t * reverse_ss(statement_sequence_t* ss);
 void print_statement_list(statement_sequence_t* ss);
 std::vector<BasicBlock*> create_CFG(statement_sequence_t *ss);
+void value_numbering();
+void create_tables_for_bb(int cfg_index);
+void copy_parent_tables_to_child(int parent_index, int child_index);
+void process_bb_stats_for_tables(int index);
+void process_statement_for_tables(Statement *stat, int table_index);
+void process_multi_stat_for_tables(Statement *stat, int table_index);
+Val_obj* eval_expr(Statement *stat, int table_index);
+int eval_const(int constant, int table_index);
+Val_obj* eval_id(char *var, int table_index);
+int get_appr_value_num_for_term(Term *t, int table_index);
+void process_singular_stat_for_tables(Statement *stat, int table_index);
+void optimize_singl_stat_with_const(Statement *stat, int val_num, int table_index);
+void optimize_stat_with_const(Statement *stat, int val_num, int table_index);
+int calc_const_and_add_to_table(int const1, int op, int const2, int table_index);
+std::vector<string> find_ids_with_same_val_obj(Val_obj *vo, int table_index);
+void process_ids_with_current_val_num(std::vector<string> ids, Statement *stat, int table_index);
+RHS * optimize_plus_expr(RHS *rhs, int table_index);
+RHS * optimize_minus_expr(RHS *rhs, int table_index);
+RHS * optimize_star_expr(RHS *rhs, int table_index);
+RHS * optimize_slash_expr(RHS *rhs, int table_index);
+RHS * optimize_mod_expr(RHS *rhs, int table_index);
+RHS * optimize_e_le_ge_expr(RHS *rhs, int table_index);
+RHS * optimize_ne_gt_lt_exprs(RHS *rhs, int table_index);
+bool is_var_and_currently_0(Term *t, int table_index);
+bool is_var_and_currently_1(Term *t, int table_index);
+bool is_var_and_currently_num(int num_to_compare, Term *t, int table_index);
+bool is_current_constant(char *id, int table_index);
+int const_val_num_matches(int val_num, int constant, int relop, bool t1_is_const, int table_index);
+bool have_same_val_nums(char *var1, char *var2, int table_index);
+std::unordered_map<int, int>::const_iterator const_table_find(int val_num, int table_index);
 void process_statement(statement_t *s);
 void add_while_statement_to_cfg(while_statement_t *ws);
 void add_statements_to_cfg(statement_sequence_t *ss);
@@ -101,13 +134,19 @@ char* create_temp_id();
 Term* create_temp_term(char* id);
 char* create_and_insert_stat(RHS *rhs);
 void define_extended_bbs();
+bool is_separated_from_parents(int bb_index);
 bool extended_bb_alg(int bb_index, bool changed);
 bool has_one_parent(int bb_index);
 bool populate_children_bbs(int parent_index, int parent_ebb, bool changed);
 void print_CFG();
+void remove_dummy_nodes();
+int get_updated_index(int index, vector<int> dummy_nodes);
+
 
 
 /*ONE IT DOESNT CATCH*/
 Term* gen_term_from_primary(primary_t *p);
+void find_stat_and_add_to_remove_list(Statement* stat, int table_index);
+
 
 #endif /* CONTROL_FLOW_H */

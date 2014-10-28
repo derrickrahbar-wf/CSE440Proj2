@@ -314,10 +314,8 @@ struct expression_data_t *set_expression_data(float val, char *type)
 
 struct factor_t* set_factor_t_sign_factor(int sign, struct factor_t* f, int line_number)
 {
-    printf("\n\n WE ARE SETTING A SIGN GACTOR: ");
     struct factor_t *fsf = new_factor();
     fsf->type = FACTOR_T_SIGNFACTOR;
-    printf("tpye = %d\n\n", fsf->type);
     fsf->data.f = set_factor_data(sign, f);
 
     /*This would need to be a real or an integer to have a sign in from of it */

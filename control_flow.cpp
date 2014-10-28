@@ -8,8 +8,11 @@ extern "C"
 }
 #include "control_flow.h"
 #include <sstream>
-#include <string>
+#include <iostream>
 #include <algorithm>
+#include <unordered_map>
+#include <utility>
+
 
 using namespace std;
 
@@ -20,11 +23,11 @@ int IN3ADD_op = -1;
 int extended_bb_label = 1;
 int g_val_num = 0;
 
-std:std::vector<int> statements_to_remove;
+std::vector<int> statements_to_remove;
 
-std::vector<std::unordered_map<string, int>> expr_tables;
-std::vector<std::unordered_map<string, Val_obj*>> id_tables;
-std::vector<std::unordered_map<int, int>> const_tables; /* constant will be first, valnum second */
+std::vector<std::unordered_map<string, int>*> expr_tables;
+std::vector<std::unordered_map<string, Val_obj*>*> id_tables;
+std::vector<std::unordered_map<int, int>*> const_tables; /* constant will be first, valnum second */
 
 
 statement_sequence_t * reverse_ss(statement_sequence_t* ss)
@@ -57,18 +60,128 @@ std::vector<BasicBlock*> create_CFG(statement_sequence_t *ss)
 	BasicBlock *starting_block = new BasicBlock();
 	cfg.push_back(starting_block);
 	add_statements_to_cfg(ss);
-	define_extended_bbs();
+	print_CFG();
+	remove_dummy_nodes();
+	//define_extended_bbs();
 	print_CFG();
 
-	value_numbering();
+	// value_numbering();
+	// cout << "\n\n====================================================\n\n";
+	// cout << "AFTER VALUE NUMBERING\n";
+	// print_CFG();
 
 	return cfg;
+}
+
+/*This method removes all dummy nodes in the cfg
+  with the exception of the ending node, which may
+  be empty, this can be defined if it has no children */
+void remove_dummy_nodes()
+{
+    BasicBlock *bb;
+    std::vector<int> dummy_nodes;
+    for(int i=0; i<cfg.size(); i++)
+    {
+        bb = cfg[i];
+        /* This is a bb with no statements in it that is not
+            the ending block, thus we can remove it */
+        if(bb->statements.size() == 0 && bb->children.size() > 0)
+        {
+            dummy_nodes.push_back(i);
+            cout << "\nDUMMY NODE " << i << endl;
+        }
+    }
+
+
+    for(int i=0;i<dummy_nodes.size();i++)
+    {
+	    bb = cfg[dummy_nodes[i]];
+	    cout << "Found dummy node " << dummy_nodes[i] << endl;
+	    /*copy all the children of this node as children to the parents 
+	      and vise versa */
+	    for(int p = 0; p< bb->parents.size(); p++)
+	    {
+	        int parent_index = bb->parents[p];
+	        cout << "PARENT " << parent_index << endl;
+	        /*erase dummy bb as a child to this parent */
+	        vector<int>::iterator position = find(cfg[parent_index]->children.begin(), cfg[parent_index]->children.end(), dummy_nodes[i]);
+	        if (position != cfg[parent_index]->children.end()) 
+	        {
+	       	  cfg[parent_index]->children.erase(position);
+	        }
+
+	        for(int c=0 ; c<bb->children.size(); c++)
+	        {
+	            int child_index = bb->children[c];
+	            cout << "CHILD " << child_index << endl;
+	            /*erase dummy bb as a parent to this child */
+	            vector<int>::iterator position = find(cfg[child_index]->parents.begin(), cfg[child_index]->parents.end(), dummy_nodes[i]);
+	            if (position != cfg[child_index]->parents.end())
+	            {
+	   				cfg[child_index]->parents.erase(position);	
+	            } // == vector.end() means the element was not found
+	                
+	             /*push back new child of parent*/
+		    	cfg[parent_index]->children.push_back(child_index);
+
+		    	/*push back new parent of child */
+		    	cfg[child_index]->parents.push_back(parent_index);
+	        }
+	    }
+    }
+
+    /* we can finally delete the nodes */
+    for(int i=0;i<dummy_nodes.size();i++)
+    {
+    	cfg.erase(cfg.begin() + dummy_nodes[i]);
+    }
+
+    /*Now we must go through the bb and update any indexes
+      that may have changed */
+    for(int i=0; i<cfg.size(); i++)
+    {
+    	BasicBlock *bb = cfg[i];
+
+    	/*update parent indexes*/
+    	for(int p=0; p<bb->parents.size() ; p++)
+    	{
+    		bb->parents[p] = get_updated_index(bb->parents[p], dummy_nodes);
+    	}
+    	/*update child indexes*/
+    	for(int c=0; c<bb->children.size() ; c++)
+    	{
+    		bb->children[c] = get_updated_index(bb->children[c], dummy_nodes);	
+    	}
+    }
+}
+
+/* Takes in a list of indexes that are going to be deleted
+   and processes what the incoming index will be after those deletions */
+int get_updated_index(int index, vector<int> dummy_nodes)
+{
+	for(int i=0; i<dummy_nodes.size();i++)
+	{
+		/* if the index is greater than the node that will
+		   be deleted, reduce its index by 1 because it will
+		   become one less when this node is eventually deleted */
+		   if(index > dummy_nodes[i])
+		   {
+		   		index--;
+		   }
+	}
+
+	return index;
 }
 
 void value_numbering()
 {
 	for(int i = 0; i < cfg.size(); i++)
 	{
+		/* push back a new undordered_map */
+		id_tables.push_back(new unordered_map<string, Val_obj*>);
+		expr_tables.push_back(new unordered_map<string, int>);
+		const_tables.push_back(new unordered_map<int, int>);
+
 		create_tables_for_bb(i);
 	}
 }
@@ -80,10 +193,11 @@ void create_tables_for_bb(int cfg_index)
 	for(int i=0; i < bb->parents.size(); i++)
 	{
 		int parent_index = bb->parents[i];
-
+		cout << "Analysis for parent " << parent_index << " of bb " << cfg_index << endl;
 		/* We only would want a parent of the child with the same ebb and it defined before them*/
 		if(cfg_index > parent_index && bb->extended_bb == cfg[parent_index]->extended_bb)
 		{
+			cout << "Copying bb tables of parent " << parent_index << " into bb " << cfg_index << endl;  
 			copy_parent_tables_to_child(parent_index, cfg_index);
 		}
 	}
@@ -93,29 +207,32 @@ void create_tables_for_bb(int cfg_index)
 
 void copy_parent_tables_to_child(int parent_index, int child_index)
 {
-	for ( auto it = expr_tables[parent_index].begin(); it != expr_tables[parent_index].end(); ++it )
-		expr_tables[child_index].insert(it->first, it->second);
+	for ( auto it = expr_tables[parent_index]->begin(); it != expr_tables[parent_index]->end(); ++it )
+		expr_tables[child_index]->insert(make_pair(it->first,it->second));	
 
-	for ( auto it = id_tables[parent_index].begin(); it != id_tables[parent_index].end(); ++it )
+	for ( auto it = id_tables[parent_index]->begin(); it != id_tables[parent_index]->end(); ++it )
 	{
 		Val_obj *tmp = new Val_obj();
 		tmp->val_num = it->second->val_num;
 		tmp->is_const = it->second->is_const;
 
-		id_tables[child_index].insert(it->fist, tmp);
+		id_tables[child_index]->insert(make_pair(it->first ,tmp));
 	}
 
-	for ( auto it = const_tables[parent_index].begin(); it != const_tables[parent_index].end(); ++it )
-		const_tables[child_index].insert(it->fist, it->second);
+	for ( auto it = const_tables[parent_index]->begin(); it != const_tables[parent_index]->end(); ++it )
+		const_tables[child_index]->insert(make_pair(it->first, it->second));
 }
 
 void process_bb_stats_for_tables(int index)
 {
 	BasicBlock *bb = cfg[index];
 
+	cout << "Processing bb " << index << endl;
+
 	for(int i = 0; i < bb->statements.size(); i++)
 	{
-		process_statement_for_tables(bb->statement[i], index);
+		cout << "Processing statement " << i << " in bb "<< index << endl;
+		process_statement_for_tables(bb->statements[i], index);
 	}
 
 	/*We have processed all statements for this current 
@@ -128,16 +245,20 @@ void process_bb_stats_for_tables(int index)
 
 	  /*Clear the statements to remove vector for the next bb*/
 	  statements_to_remove.clear();
+
+	  cout << "finishing processing bb " << index << endl;
 }
 
 void process_statement_for_tables(Statement *stat, int table_index)
 {
 	if(stat->rhs->t2 == NULL)
 	{
+		cout << "proccessing a single statement\n";
 		process_singular_stat_for_tables(stat, table_index);
 	}
 	else
 	{
+		cout << "proccessing a multi statement\n";
 		process_multi_stat_for_tables(stat, table_index);
 	}
 }
@@ -153,6 +274,7 @@ void process_multi_stat_for_tables(Statement *stat, int table_index)
 	constant expression evaluation */
 	if(t2->type == TERM_TYPE_CONST && t1->type == TERM_TYPE_CONST)
 	{
+		cout << "Both terms are constants\n";
 		int const_val_num = calc_const_and_add_to_table(t1->data.constant, rhs->op, t2->data.constant, table_index);
 		/* update this statement to equal the new evaluated constant*/
 		optimize_stat_with_const(stat, const_val_num, table_index);
@@ -163,12 +285,14 @@ void process_multi_stat_for_tables(Statement *stat, int table_index)
 	/* One of the terms is a constant */
 	else if(t2->type == TERM_TYPE_CONST || t1->type == TERM_TYPE_CONST)
 	{
+		cout << "One of the terms is a constant\n";
 		int const_val_num;
 		Val_obj *vo;
 		
 		/* the first term is the constant*/
 		if(t1->type == TERM_TYPE_CONST)
 		{
+			cout << "t1 is the constant\n";
 			/* get t1 constant value number and t2's variable value number */
 			const_val_num = eval_const(t1->data.constant, table_index);
 			vo = eval_id(t2->data.var, table_index);
@@ -180,7 +304,7 @@ void process_multi_stat_for_tables(Statement *stat, int table_index)
 				std::unordered_map<int, int>::const_iterator check = const_table_find(vo->val_num, table_index);
 				
 				/* has not yet been added */
-				if(check == const_tables[table_index].end())
+				if(check == const_tables[table_index]->end())
 				{
 					cout << "process_multi_stat_for_tables if stmt\n";
 					error_unknown(-1); /*this should not happen */
@@ -200,6 +324,7 @@ void process_multi_stat_for_tables(Statement *stat, int table_index)
 		/* the second term is the constant */
 		else
 		{
+			cout << "t2 is the constant\n";
 			const_val_num = eval_const(t2->data.constant, table_index);
 			vo = eval_id(t1->data.var, table_index);
 
@@ -208,7 +333,7 @@ void process_multi_stat_for_tables(Statement *stat, int table_index)
 				std::unordered_map<int, int>::const_iterator check = const_table_find(vo->val_num, table_index);
 				
 				/* has not yet been added */
-				if(check == const_tables[table_index].end())
+				if(check == const_tables[table_index]->end())
 				{
 					cout << "process_multi_stat_for_tables else if stmt\n";
 					error_unknown(-1); /*this should not happen */
@@ -217,7 +342,7 @@ void process_multi_stat_for_tables(Statement *stat, int table_index)
 
 				int c_v_num = calc_const_and_add_to_table(check->first, rhs->op, t2->data.constant, table_index);
 				lhs_vo->is_const = true;
-				lsh_vo->val_num = c_v_num;
+				lhs_vo->val_num = c_v_num;
 			}
 			else
 			{
@@ -228,9 +353,11 @@ void process_multi_stat_for_tables(Statement *stat, int table_index)
 	/* Neither of the terms are constants */
 	else
 	{
+		cout << "Neither of the terms are constants\n";
 		Val_obj *vo1, *vo2;
 	
 		/* grab the value number for each of the term id's */
+		cout << "Grab both ids\n";
 		vo1 = eval_id(t1->data.var, table_index);
 		vo2 = eval_id(t2->data.var, table_index);
 
@@ -238,18 +365,19 @@ void process_multi_stat_for_tables(Statement *stat, int table_index)
 		  perform constant eval */
 		if(vo1->is_const && vo2->is_const)
 		{
+			cout << "Both ids are currently constants\n";
 			std::unordered_map<int, int>::const_iterator check1 = const_table_find(vo1->val_num, table_index);
 			std::unordered_map<int, int>::const_iterator check2 = const_table_find(vo2->val_num, table_index);
 			
 			/* has not yet been added */
-			if(check1 == const_tables[table_index].end() || check2 == const_tables[table_index].end())
+			if(check1 == const_tables[table_index]->end() || check2 == const_tables[table_index]->end())
 			{
 				cout << "process_multi_stat_for_tables else stmt\n";
 				error_unknown(-1); /*this should not happen */
 				return;
 			}
 
-			int c_v_num = calc_const_and_add_to_table(check1->first, rhs->op, check2->first);
+			int c_v_num = calc_const_and_add_to_table(check1->first, rhs->op, check2->first, table_index);
 			lhs_vo->is_const = true;
 			lhs_vo->val_num = c_v_num;
 		}
@@ -257,22 +385,28 @@ void process_multi_stat_for_tables(Statement *stat, int table_index)
 		   add the expression to the table */
 		else
 		{
+			cout << "At least one id is not a constant adding the expr\n";	
 			lhs_vo = eval_expr(stat, table_index);
 		}
 	}
 
+	cout << "Check if other variables have the same valobj\n";
 	/* Before we add the new value to our lhs var, let us check to see 
 	   if any other variables currenlty evaluate to this same expression */
-	std::std::vector<string> duplicate_ids = find_ids_with_same_val_obj(lhs_vo), table_index);
+	std::vector<string> duplicate_ids = find_ids_with_same_val_obj(lhs_vo, table_index);
 
+	cout << "Optimized statement with the duplicate_ids\n";
 	/* perform optimization of the statement according to the ids with 
 	duplicate value numbers */
 	process_ids_with_current_val_num(duplicate_ids, stat, table_index);
 
+	cout << "Add id to table with val obj\n";
 	/*Finally we add the new value number to our
 	  current lhs id*/
 	string key(stat->lhs);
-	id_tables[table_index][key] = lhs_vo;
+	id_tables[table_index]->insert(make_pair(key, lhs_vo));
+
+	cout << "Finished processing " << key << endl;
 
 }
 
@@ -287,29 +421,29 @@ Val_obj* eval_expr(Statement *stat, int table_index)
 	switch(stat->rhs->op)
 	{
 		case STAT_PLUS:
-			stat->rhs =  optimize_plus_expr(stat->rhs);
+			stat->rhs =  optimize_plus_expr(stat->rhs, table_index);
 			break;
 		case STAT_MINUS:
-			stat->rhs =  optimize_minus_expr(stat->rhs);
+			stat->rhs =  optimize_minus_expr(stat->rhs, table_index);
 			break;
 		case STAT_STAR:
-			stat->rhs =  optimize_star_expr(stat->rhs);
+			stat->rhs =  optimize_star_expr(stat->rhs, table_index);
 			break;
 		case STAT_SLASH:
-			stat->rhs =  optimize_slash_expr(stat->rhs);
+			stat->rhs =  optimize_slash_expr(stat->rhs, table_index);
 			break;
 		case STAT_MOD:
-			stat->rhs =  optimize_mod_expr(stat->rhs);
+			stat->rhs =  optimize_mod_expr(stat->rhs, table_index);
 			break;
 		case STAT_EQUAL:
 		case STAT_LE:
 		case STAT_GE:
-			stat->rhs =  optimize_e_le_ge_expr(stat->rhs);
+			stat->rhs =  optimize_e_le_ge_expr(stat->rhs, table_index);
 			break;	
 		case STAT_NOTEQUAL:
 		case STAT_LT:
 		case STAT_GT:
-			stat->rhs = optimize_ne_gt_lt_exprs(stat->rhs);
+			stat->rhs = optimize_ne_gt_lt_exprs(stat->rhs, table_index);
 			break;
 	
 	}
@@ -342,13 +476,13 @@ Val_obj* eval_expr(Statement *stat, int table_index)
 		}
 
 		/* check to see if the expression already exists */
-		std::unordered_map<string, int>::const_iterator check = expr_tables[table_index].find (expr_string);
+		std::unordered_map<string, int>::const_iterator check = expr_tables[table_index]->find (expr_string);
 
 		/*Expression has not yet been added */
-		if(check == expr_tables[table_index].end())
+		if(check == expr_tables[table_index]->end())
 		{
 			/*introduce a new valnum for the expression and add*/
-			expr_tables[table_index][expr_string] = g_val_num;
+			expr_tables[table_index]->insert(make_pair(expr_string,g_val_num));
 			lhs_vo->val_num = g_val_num;
 			g_val_num++;
 		}
@@ -369,17 +503,17 @@ Val_obj* eval_expr(Statement *stat, int table_index)
    and adds to table, returns the val_num for const */
 int eval_const(int constant, int table_index)
 {
-    std::unordered_map<int, int>::const_iterator check = const_tables[table_index].find (constant);
+    std::unordered_map<int, int>::const_iterator check = const_tables[table_index]->find (constant);
 
     /*constant has not yet been added 
       therefore we need to introduce a 
       new val_num for this */
-    if(check == id_tables[table_index].end())
+    if(check == const_tables[table_index]->end())
     {
     	int const_val_num = g_val_num;
     	g_val_num++;
 
-    	const_tables[table_index][constant] = const_val_num; /*insert into table */
+    	const_tables[table_index]->insert(make_pair(constant, const_val_num)); /*insert into table */
     	
     	return const_val_num; /* return the val_num associated with the constant */
     }
@@ -392,26 +526,33 @@ int eval_const(int constant, int table_index)
    returns the Val_obj for id */
 Val_obj* eval_id(char *var, int table_index)
 {
+	cout << "Evaluating id " << var << endl;
 	string key(var);
-    std::unordered_map<string, Val_obj*>::const_iterator check = id_tables[table_index].find (key);
+	cout << "Got string " << key << endl;
+    std::unordered_map<string, Val_obj*>::const_iterator check = id_tables[table_index]->find (key);
 
+    cout << "Performed table find on index " << table_index << endl;
     /*variable has not yet been added 
       therefore we need to introduce a 
       new val_num for this it would not
       be a constant either because it 
       is not in the table yet */
-    if(check == id_tables[table_index].end())
+    if(check == id_tables[table_index]->end())
     {
+    	cout << var << " has not yet been added\n";
     	Val_obj *vo = new Val_obj();
     	vo->val_num = g_val_num;
     	vo->is_const = false;
-    	id_tables[table_index][key] = vo; /* add new val to the table */
+    	cout << "Add " << key << " with valnum " << g_val_num << endl;
+    	id_tables[table_index]->insert(make_pair(key, vo)); /* add new val to the table */
 
     	g_val_num++; /*increase the g_val_num for the next val_num to be used*/
 
+    	cout << "Return val_obj\n";
     	return vo;
     }
 
+    cout << "Id already exitsts return " << check->second->val_num;
     /* the id already exisits, return the val_obj associated with it */
     return check->second;
 }
@@ -439,17 +580,17 @@ void process_singular_stat_for_tables(Statement *stat, int table_index)
 	/* a = 1 , it is a constant 
 		add constant val to cons_table 
 		and create a Val_obj for the lhs id */
-	if(stat->t1->type == TERM_TYPE_CONST)
+	if(stat->rhs->t1->type == TERM_TYPE_CONST)
 	{
 		valObj = new Val_obj();
-		valObj->val_num = eval_const(stat->t1->data.constant, table_index);
+		valObj->val_num = eval_const(stat->rhs->t1->data.constant, table_index);
 		valObj->is_const = true;
 	}
 
 	/* a = b, it is a var add var */ 
 	else
 	{
-		temp_obj = eval_id(stat->t1->data.var, table_index);
+		temp_obj = eval_id(stat->rhs->t1->data.var, table_index);
 		valObj->val_num = temp_obj->val_num;
 		valObj->is_const = temp_obj->is_const;
 
@@ -465,10 +606,11 @@ void process_singular_stat_for_tables(Statement *stat, int table_index)
 	/*Let us check is the lhs is already defined as this rhs
 	  if so, we can delete this statement entirely because it doesnt
 	  change the value of the lhs id */ 
-	std::vector<string> duplicate_ids = find_ids_with_same_val_obj(lhs_vo, table_index);	
+	std::vector<string> duplicate_ids = find_ids_with_same_val_obj(valObj, table_index);	
 	for(int i=0 ;i<duplicate_ids.size(); i++)
 	{
-		if(stat->lhs.compare(duplicate_ids[i]) == 0)
+		string lhs(stat->lhs);
+		if(lhs.compare(duplicate_ids[i]) == 0)
 		{
 			find_stat_and_add_to_remove_list(stat, table_index);
 		}
@@ -476,7 +618,7 @@ void process_singular_stat_for_tables(Statement *stat, int table_index)
 	 
 	/*update the lhs id with the rhs valObj*/  	
 	string key(stat->lhs);
-	id_tables[table_index][key] = valObj;
+	id_tables[table_index]->insert(make_pair(key, valObj));
 }
 
 /* Takes in a statement to be optimized and a val_num associated
@@ -487,7 +629,7 @@ void optimize_singl_stat_with_const(Statement *stat, int val_num, int table_inde
 	std::unordered_map<int, int>::const_iterator const_it = const_table_find(val_num, table_index);
 
 	/*Expression has not yet been added */
-	if(const_it == const_tables[table_index].end())
+	if(const_it == const_tables[table_index]->end())
 	{
 		cout << "optimize_singl_stat_with_const\n";
 		error_unknown(-1); /*this should not happen */
@@ -504,7 +646,7 @@ void optimize_singl_stat_with_const(Statement *stat, int val_num, int table_inde
 void find_stat_and_add_to_remove_list(Statement* stat, int table_index)
 {	
 	/*Add this to the list of statements to remove from the bb*/
-	Statement **dup_stat = find (cfg[table_index]->statements.begin(), cfg[table_index]->statements.end(), stat);
+	std::vector<Statement*>::iterator dup_stat = find (cfg[table_index]->statements.begin(), cfg[table_index]->statements.end(), stat);
 	if (dup_stat == cfg[table_index]->statements.end())
 	{
 		cout << "find_stat_and_add_to_remove_list\n";
@@ -528,7 +670,7 @@ void optimize_stat_with_const(Statement *stat, int val_num, int table_index)
 	std::unordered_map<int, int>::const_iterator check = const_table_find(val_num, table_index);
 
 	/* has not yet been added */
-	if(check == const_tables[table_index].end())
+	if(check == const_tables[table_index]->end())
 	{
 		cout << "optimize_stat_with_const\n";
 		error_unknown(-1); /*this should not happen */
@@ -546,51 +688,51 @@ void optimize_stat_with_const(Statement *stat, int val_num, int table_index)
    corresponding val_num */
 int calc_const_and_add_to_table(int const1, int op, int const2, int table_index)
 {
-	int eval_const;
+	int evalconst;
 	switch(op)
 	{
 		case STAT_PLUS :
-			eval_const = const1 + const2;
+			evalconst = const1 + const2;
 			break;
 		case STAT_MINUS:
-			eval_const = const1 - const2;
+			evalconst = const1 - const2;
 			break;
 		case STAT_STAR:
-			eval_const = const1 * const2;
+			evalconst = const1 * const2;
 			break;
 		case STAT_SLASH: 
-			eval_const = const1 / const2;
+			evalconst = const1 / const2;
 			break;
 		case STAT_MOD:
-			eval_const = const1 % const2;
+			evalconst = const1 % const2;
 			break;
 		case STAT_EQUAL:
-			eval_const = (const1 == const2)? 1 : 0;
+			evalconst = (const1 == const2)? 1 : 0;
 			break;
 		case STAT_NOTEQUAL:
-			eval_const = (const1 != const2)? 1 : 0;
+			evalconst = (const1 != const2)? 1 : 0;
 			break;
 		case STAT_LT: 
-			eval_const = (const1 < const2)? 1 : 0;
+			evalconst = (const1 < const2)? 1 : 0;
 			break;
 		case STAT_GT: 
-			eval_const = (const1 > const2)? 1 : 0;
+			evalconst = (const1 > const2)? 1 : 0;
 			break;
 		case STAT_LE:
-			eval_const = (const1 <= const2)? 1 : 0;
+			evalconst = (const1 <= const2)? 1 : 0;
 			break;
 		case STAT_GE :
-			eval_const = (const1 >= const2)? 1 : 0;
+			evalconst = (const1 >= const2)? 1 : 0;
 			break;
 		case STAT_NONE:
 			cout << "calc_const_and_add_to_table\n";
 			error_unknown(-1); /*we shouldnt get here */
-			eval_const = -1;
+			evalconst = -1;
 			break;
 	}
 
 	/*add or find in const table and return val_num */
-	return eval_const(eval_const, table_index);
+	return eval_const(evalconst, table_index);
 }
 
 /* Takes in a val_obj and searches the id_table for
@@ -600,7 +742,7 @@ std::vector<string> find_ids_with_same_val_obj(Val_obj *vo, int table_index)
 {
 	std::vector<string> ids;
 
-	for (auto it = id_tables[table_index].begin(); it != id_tables[table_index].end(); ++it )
+	for (auto it = id_tables[table_index]->begin(); it != id_tables[table_index]->end(); ++it )
 	{
 		if(it->second->val_num == vo->val_num)
 		{
@@ -613,7 +755,7 @@ std::vector<string> find_ids_with_same_val_obj(Val_obj *vo, int table_index)
 
 /* perform optimization of the statement according to the ids with 
 	duplicate value numbers */
-process_ids_with_current_val_num(std::vector<string> ids, Statement *stat, int table_index)
+void process_ids_with_current_val_num(std::vector<string> ids, Statement *stat, int table_index)
 {
 	/*if statement already equals a single constant, dont update 
 		is fully optimized */
@@ -637,10 +779,11 @@ process_ids_with_current_val_num(std::vector<string> ids, Statement *stat, int t
 			variable, because it is already evaluated to this value */
 		else
 		{
-			char *t1 = new char [str.length()+1];
+			char *t1 = new char [ids[i].length()+1];
 			strcpy(t1, ids[i].c_str());
 
-			stat->rhs->t1 = t1;
+			stat->rhs->t1->type = TERM_TYPE_VAR;
+			stat->rhs->t1->data.var = t1;
 			stat->rhs->t2 = NULL;
 			stat->rhs->op = STAT_NONE;
 		}
@@ -695,7 +838,7 @@ RHS * optimize_plus_expr(RHS *rhs, int table_index)
 	   t1 and t2 must both be vars and have 
 	   the same value num */
 	else if(rhs->t1->type == TERM_TYPE_VAR && rhs->t2->type == TERM_TYPE_VAR
-		&& have_same_val_nums(rhs->t1->data.val, rhs->t2->data.val, table_index))
+		&& have_same_val_nums(rhs->t1->data.var, rhs->t2->data.var, table_index))
 	{
 		/*preserve value of t2 and replace t1 with constant of 2
 		  update the operation to be multiplication */
@@ -737,7 +880,7 @@ RHS * optimize_minus_expr(RHS *rhs, int table_index)
 	/* a = b - b --> a = 0
 	   t1 and t2 must be vars and have same val nums */
 	else if(rhs->t1->type == TERM_TYPE_VAR && rhs->t2->type == TERM_TYPE_VAR
-		&& have_same_val_nums(rhs->t1->data.val, rhs->t2->data.val, table_index))
+		&& have_same_val_nums(rhs->t1->data.var, rhs->t2->data.var, table_index))
 	{
 		rhs->t2 = NULL;
 		rhs->op = STAT_NONE;
@@ -809,7 +952,7 @@ RHS * optimize_slash_expr(RHS *rhs, int table_index)
 	   t1 must be a constant that is 0
 	   or a var that is currently eval to a 
 	   constat that is 0 */
-	if((rhs->t1->type == TERM_TYPE_CONST && rhs->data.constant == 0)
+	if((rhs->t1->type == TERM_TYPE_CONST && rhs->t1->data.constant == 0)
 		|| is_var_and_currently_0(rhs->t1, table_index))
 	{
 		rhs->t2 = NULL;
@@ -828,7 +971,7 @@ RHS * optimize_slash_expr(RHS *rhs, int table_index)
 	/* a = b/b --> a = 1
 	   t1 and t2 must both have same val numbers */
 	else if(rhs->t1->type == TERM_TYPE_VAR && rhs->t2->type == TERM_TYPE_VAR
-		&& have_same_val_nums(rhs->t1->data.val, rhs->t2->data.val, table_index))
+		&& have_same_val_nums(rhs->t1->data.var, rhs->t2->data.var, table_index))
 	{
 		rhs->t2 = NULL;
 		rhs->op = STAT_NONE;
@@ -851,7 +994,7 @@ RHS * optimize_mod_expr(RHS *rhs, int table_index)
 		rhs->t2 = NULL;
 		rhs->op = STAT_NONE;
 		rhs->t1->type = TERM_TYPE_CONST;
-		rhs->t1->data.constant = 0 /* remove t2 and replace t1 with constant value 0 */
+		rhs->t1->data.constant = 0; /* remove t2 and replace t1 with constant value 0 */
 	}
 
 	/* a = 1 % b --> a = 1
@@ -875,13 +1018,13 @@ RHS * optimize_mod_expr(RHS *rhs, int table_index)
 		rhs->t2 = NULL;
 		rhs->op = STAT_NONE;
 		rhs->t1->type = TERM_TYPE_CONST;
-		rhs->t1->data.constant = 0 /* remove t2 and replace t1 with constant value 0 */ 
+		rhs->t1->data.constant = 0; /* remove t2 and replace t1 with constant value 0 */ 
 	}
 
 	/* a = b % b --> a = 0 
 	   t1 and t2 must have same val nums */
 	else if(rhs->t1->type == TERM_TYPE_VAR && rhs->t2->type == TERM_TYPE_VAR
-		&& have_same_val_nums(rhs->t1->data.val, rhs->t2->data.val, table_index))
+		&& have_same_val_nums(rhs->t1->data.var, rhs->t2->data.var, table_index))
 	{
 		rhs->t2 = NULL;
 		rhs->op = STAT_NONE;
@@ -900,7 +1043,7 @@ RHS * optimize_e_le_ge_expr(RHS *rhs, int table_index)
 	/* b == b, b >= b, b <= b, replace with 1 for true 
 	   t1 and t2 must both be vars with same val nums */
 	if(rhs->t1->type == TERM_TYPE_VAR && rhs->t2->type == TERM_TYPE_VAR
-		&& have_same_val_nums(rhs->t1->data.var, rhs->t2->data.var))
+		&& have_same_val_nums(rhs->t1->data.var, rhs->t2->data.var, table_index))
 	{
 		rhs->t2 = NULL;
 		rhs->op = STAT_NONE;
@@ -912,12 +1055,12 @@ RHS * optimize_e_le_ge_expr(RHS *rhs, int table_index)
 	 	to a constant */
 	else if(rhs->t1->type == TERM_TYPE_CONST && is_current_constant(rhs->t2->data.var, table_index))
 	{
-		int new_t1 = const_val_num_matches(eval_id(rhs->t2->data.var)->val_num, 
-										   rhs->t1->data.constant, rhs->op, true, table_index)
+		int new_t1 = const_val_num_matches(eval_id(rhs->t2->data.var, table_index)->val_num, 
+										   rhs->t1->data.constant, rhs->op, true, table_index);
 		/* set t1 to whether or not they are true */
 		rhs->t1->type = TERM_TYPE_CONST;
 		rhs->t1->data.constant = new_t1;
-		rhs->op = STAT_NONEl
+		rhs->op = STAT_NONE;
 		rhs->t2 = NULL;
 	}
 
@@ -925,12 +1068,12 @@ RHS * optimize_e_le_ge_expr(RHS *rhs, int table_index)
  	to a constant */
 	else if(rhs->t2->type == TERM_TYPE_CONST && is_current_constant(rhs->t1->data.var, table_index))
 	{
-		int new_t1 = const_val_num_matches(eval_id(rhs->t1->data.var)->val_num, 
-										   rhs->t2->data.constant, rhs->op, false, table_index)
+		int new_t1 = const_val_num_matches(eval_id(rhs->t1->data.var, table_index)->val_num, 
+										   rhs->t2->data.constant, rhs->op, false, table_index);
 		/* set t1 to whether or not they are true */
 		rhs->t1->type = TERM_TYPE_CONST;
 		rhs->t1->data.constant = new_t1;
-		rhs->op = STAT_NONEl
+		rhs->op = STAT_NONE;
 		rhs->t2 = NULL;
 	}
 
@@ -945,7 +1088,7 @@ RHS * optimize_ne_gt_lt_exprs(RHS *rhs, int table_index)
 	/* b != b, b > b, b < b, replace with 0 for false 
 	   t1 and t2 must both be vars with same val nums */
 	if(rhs->t1->type == TERM_TYPE_VAR && rhs->t2->type == TERM_TYPE_VAR
-		&& have_same_val_nums(rhs->t1->data.var, rhs->t2->data.var))
+		&& have_same_val_nums(rhs->t1->data.var, rhs->t2->data.var, table_index))
 	{
 		rhs->t2 = NULL;
 		rhs->op = STAT_NONE;
@@ -957,12 +1100,12 @@ RHS * optimize_ne_gt_lt_exprs(RHS *rhs, int table_index)
  	to a constant */
 	else if(rhs->t1->type == TERM_TYPE_CONST && is_current_constant(rhs->t2->data.var, table_index))
 	{
-		int new_t1 = const_val_num_matches(eval_id(rhs->t2->data.var)->val_num, 
-										   rhs->t1->data.constant, rhs->op, table_index)
+		int new_t1 = const_val_num_matches(eval_id(rhs->t2->data.var, table_index)->val_num, 
+										   rhs->t1->data.constant, rhs->op, true, table_index);
 		/* set t1 to whether or not they are true */
 		rhs->t1->type = TERM_TYPE_CONST;
 		rhs->t1->data.constant = new_t1;
-		rhs->op = STAT_NONEl
+		rhs->op = STAT_NONE;
 		rhs->t2 = NULL;
 	}
 
@@ -970,12 +1113,12 @@ RHS * optimize_ne_gt_lt_exprs(RHS *rhs, int table_index)
  	to a constant */
 	else if(rhs->t2->type == TERM_TYPE_CONST && is_current_constant(rhs->t1->data.var, table_index))
 	{
-		int new_t1 = const_val_num_matches(eval_id(rhs->t1->data.var)->val_num, 
-										   rhs->t2->data.constant, rhs->op, table_index)
+		int new_t1 = const_val_num_matches(eval_id(rhs->t1->data.var, table_index)->val_num, 
+										   rhs->t2->data.constant, rhs->op, false, table_index);
 		/* set t1 to whether or not they are true */
 		rhs->t1->type = TERM_TYPE_CONST;
 		rhs->t1->data.constant = new_t1;
-		rhs->op = STAT_NONEl
+		rhs->op = STAT_NONE;
 		rhs->t2 = NULL;
 	}
 
@@ -1009,11 +1152,11 @@ bool is_var_and_currently_num(int num_to_compare, Term *t, int table_index)
 
 	if(id_obj->is_const)
 	{
-		std::unordered_map<int, int>::const_iterator constant = const_table_find(check->second->val_num, 
+		std::unordered_map<int, int>::const_iterator constant = const_table_find(id_obj->val_num, 
 																				 table_index);
 
 		/* has not yet been added */
-		if(constant == const_tables[table_index].end())
+		if(constant == const_tables[table_index]->end())
 		{
 			cout << "is_var_and_currently_num\n";
 			error_unknown(-1); /*this should not happen */
@@ -1041,7 +1184,7 @@ int const_val_num_matches(int val_num, int constant, int relop, bool t1_is_const
 	std::unordered_map<int, int>::const_iterator const_it = const_table_find(val_num, table_index);
 
 	/*Expression has not yet been added */
-	if(const_it == const_tables[table_index].end())
+	if(const_it == const_tables[table_index]->end())
 	{
 		cout << "const_val_num_matches\n";
 		error_unknown(-1); /*this should not happen */
@@ -1089,13 +1232,13 @@ bool have_same_val_nums(char *var1, char *var2, int table_index)
 	incoming val_num or the end if not found */
 std::unordered_map<int, int>::const_iterator const_table_find(int val_num, int table_index)
 {
-	for (auto it = const_tables[table_index].begin(); it != const_tables[table_index].end(); ++it )
+	for (auto it = const_tables[table_index]->begin(); it != const_tables[table_index]->end(); ++it )
 	{
 		if(it->second == val_num)
 			return it;
 	}
 
-	return const_tables[table_index].end();
+	return const_tables[table_index]->end();
 }
 
 void process_statement(statement_t *s)
@@ -1138,7 +1281,6 @@ void add_while_statement_to_cfg(while_statement_t *ws)
 
 	/* Add new BB for ws body */
 	add_next_bb(parent);
-	cout << "While statement type : " << ws->s->type << endl;
 	process_statement(ws->s);
 	
 	/* Ending block of while body is set as a parent of the condition BB */
@@ -1179,15 +1321,20 @@ void add_if_statement_to_cfg(if_statement_t *ifs)
 	add_condition_to_bb(ifs->e);
 
 	
+	/* Receive the starting block of the then statement */
 	int if_st1_index = add_if_body_to_cfg(ifs->s1, parent);
+	int end_st1_index = current_bb;
+
+	/* same logic as above for the else stmt */
 	int if_st2_index = add_if_body_to_cfg(ifs->s2, parent);
+	int end_st2_index = current_bb;
 	
 	cfg[parent]->children.push_back(if_st1_index);
 	cfg[parent]->children.push_back(if_st2_index);
 
 	std::vector<int> if_statements_index;
-	if_statements_index.push_back(if_st1_index);
-	if_statements_index.push_back(if_st2_index);
+	if_statements_index.push_back(end_st1_index);
+	if_statements_index.push_back(end_st2_index);
 
 	add_next_bb(if_statements_index);
 }
@@ -1707,6 +1854,20 @@ bool is_separated_from_parents(int bb_index)
 	return true;
 }
 
+bool has_one_parent_above(int index)
+{
+	int parent_above_count = 0;
+	for(int i=0 ;i<cfg[index]->parents.size(); i++)
+	{
+		if(index > cfg[index]->parents[i])
+		{
+			parent_above_count++;
+		}
+	}
+
+	return (parent_above_count == 1)? true : false;
+}
+
 
 bool extended_bb_alg(int bb_index, bool changed)
 {
@@ -1720,12 +1881,17 @@ bool extended_bb_alg(int bb_index, bool changed)
 			changed= true;
 		}
 
-	}	
-	else if(!is_separated_from_parents(bb_index))
+	}
+	/*if the node has only one parent directly above him, 
+	  he can remain in the same bb as him */	
+	else if(!has_one_parent_above(bb_index))
 	{
-		cfg[bb_index]->extended_bb = extended_bb_label;
-		extended_bb_label++;
-		changed = true;
+		if(!is_separated_from_parents(bb_index))
+		{
+			cfg[bb_index]->extended_bb = extended_bb_label;
+			extended_bb_label++;
+			changed = true;
+		}
 	}		
 
 	changed |= populate_children_bbs(bb_index, cfg[bb_index]->extended_bb, changed);
@@ -1775,7 +1941,7 @@ void print_CFG()
 {
 	for(int i = 0; i < cfg.size(); i++)
 	{
-		printf("CURRENT BB INDEX: %d\n", i);
+		printf("\n \nCURRENT BB INDEX: %d\n", i);
 		cout << "Extended bb: " << cfg[i]->extended_bb << endl;
 		printf("Parents: ");
 		for(int x=0 ; x <cfg[i]->parents.size() ; x++)
@@ -1863,11 +2029,13 @@ void print_CFG()
 			}
 
 			printf("\tASSIGNMENT: ");
+			
+			printf("%s = ", stmt->lhs);
 			if(stmt->rhs->t1->sign == STAT_SIGN_NEGATIVE)
 			{
 				printf("-");
 			}
-			printf("%s = %s ", stmt->lhs, t1);
+			printf("%s", t1);
 
 			if(stmt->rhs->t2 != NULL)
 			{
@@ -1882,6 +2050,6 @@ void print_CFG()
 			
 		}
 
-		printf("-------------------------------------------------------------\n\n");
+		printf("-------------------------------------------------------------");
 	}
 }

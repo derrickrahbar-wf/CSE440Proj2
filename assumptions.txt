@@ -2,6 +2,56 @@
 
 
 
+/*This method removes all dummy nodes in the cfg
+  with the exception of the ending node, which may
+  be empty, this can be defined if it has no children */
+void remove_dummy_nodes()
+{
+    BasicBlock *bb;
+    for(int i=0; i<cfg.size(); i++)
+    {
+        bb = cfg[i];
+        /* This is a bb with no statements in it that is not
+            the ending block, thus we can remove it */
+        if(bb->statements.size() == 0 && bb->children.size() > 0)
+        {
+            /*copy all the children of this node as children to the parents 
+              and vise versa */
+            for(int p = 0; p< bb->parents.size(); p++)
+            {
+                int parent_index = bb->parents[p];
+
+                /*erase dummy bb as a child to this parent */
+                vector<int>::iterator position = find(cfg[parent_index]->children.begin(), cfg[parent_index]->children.end(), i);
+                if (position != cfg[parent_index]->children.end()) // == vector.end() means the element was not found
+                    cfg[parent_index]->children.erase(position);
+
+                for(int c=0 ; c<bb->children.size(); c++)
+                {
+                    int child_index = bb->children[c];
+
+                    /*erase dummy bb as a parent to this child */
+                    vector<int>::iterator position = find(cfg[child_index]->parents.begin(), cfg[child_index]->parents.end(), i);
+                    if (position != cfg[child_index]->parents.end()) // == vector.end() means the element was not found
+                        cfg[child_index]->parents.erase(position);
+
+                    /* add the dummy bb parent to point to this child now */
+                    cfg[parent_index]->children.push_back(child_index);
+
+                    /* add the dummy bb child to point to this parent now */
+                    cfg[child_index]->parents.push_back(parent_index);
+                }
+            }
+
+            /*Remove the bb fro the cfg */
+            cfg.erase(cfg.begin() + i);
+            i--; /* decrement counter because the previous i+1 will now be at i */
+        }
+    }
+}
+
+
+
 
 
 
