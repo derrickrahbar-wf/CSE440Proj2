@@ -81,7 +81,7 @@ int eval_const(int constant, int table_index);
 Val_obj* eval_id(char *var, int table_index);
 int get_appr_value_num_for_term(Term *t, int table_index);
 void process_singular_stat_for_tables(Statement *stat, int table_index);
-void optimize_singl_stat_with_const(Statement *stat, int val_num, int table_index);
+Val_obj *optimize_singl_stat_with_const(Statement *stat, int val_num, int table_index);
 void optimize_stat_with_const(Statement *stat, int val_num, int table_index);
 int calc_const_and_add_to_table(int const1, int op, int const2, int table_index);
 std::vector<string> find_ids_with_same_val_obj(Val_obj *vo, int table_index);

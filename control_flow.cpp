@@ -25,9 +25,9 @@ int g_val_num = 0;
 
 std::vector<int> statements_to_remove;
 
-std::vector<std::unordered_map<string, int>*> expr_tables;
-std::vector<std::unordered_map<string, Val_obj*>*> id_tables;
-std::vector<std::unordered_map<int, int>*> const_tables; /* constant will be first, valnum second */
+std::vector<std::unordered_map<string, int>> expr_tables;
+std::vector<std::unordered_map<string, Val_obj*>> id_tables;
+std::vector<std::unordered_map<int, int>> const_tables; /* constant will be first, valnum second */
 
 
 
@@ -63,12 +63,12 @@ std::vector<BasicBlock*> create_CFG(statement_sequence_t *ss)
 	add_statements_to_cfg(ss);
 	remove_dummy_nodes();
 	define_extended_bbs();
+	cout << "ENTERING VAL NUM" << endl;
 	print_CFG();
+	cout << "ENTERING VAL NUM" << endl;
 
-	// value_numbering();
-	// cout << "\n\n====================================================\n\n";
-	// cout << "AFTER VALUE NUMBERING\n";
-	// print_CFG();
+	value_numbering();
+
 
 	return cfg;
 }
@@ -178,12 +178,19 @@ void value_numbering()
 	for(int i = 0; i < cfg.size(); i++)
 	{
 		/* push back a new undordered_map */
-		id_tables.push_back(new unordered_map<string, Val_obj*>);
-		expr_tables.push_back(new unordered_map<string, int>);
-		const_tables.push_back(new unordered_map<int, int>);
+		std::unordered_map<string, Val_obj*> some_map;
+		std::unordered_map<string, int> some2_map;
+		std::unordered_map<int, int> some3_map;
+		id_tables.push_back(some_map);
+		expr_tables.push_back(some2_map);
+		const_tables.push_back(some3_map);
 
 		create_tables_for_bb(i);
 	}
+
+	cout << "\n\n====================================================\n\n";
+	cout << "AFTER VALUE NUMBERING\n";
+	print_CFG();
 }
 
 void create_tables_for_bb(int cfg_index)
@@ -207,20 +214,20 @@ void create_tables_for_bb(int cfg_index)
 
 void copy_parent_tables_to_child(int parent_index, int child_index)
 {
-	for ( auto it = expr_tables[parent_index]->begin(); it != expr_tables[parent_index]->end(); ++it )
-		expr_tables[child_index]->insert(make_pair(it->first,it->second));	
+	for ( auto it = expr_tables[parent_index].begin(); it != expr_tables[parent_index].end(); ++it )
+		expr_tables[child_index].insert(make_pair(it->first,it->second));	
 
-	for ( auto it = id_tables[parent_index]->begin(); it != id_tables[parent_index]->end(); ++it )
+	for ( auto it = id_tables[parent_index].begin(); it != id_tables[parent_index].end(); ++it )
 	{
 		Val_obj *tmp = new Val_obj();
 		tmp->val_num = it->second->val_num;
 		tmp->is_const = it->second->is_const;
 
-		id_tables[child_index]->insert(make_pair(it->first ,tmp));
+		id_tables[child_index].insert(make_pair(it->first ,tmp));
 	}
 
-	for ( auto it = const_tables[parent_index]->begin(); it != const_tables[parent_index]->end(); ++it )
-		const_tables[child_index]->insert(make_pair(it->first, it->second));
+	for ( auto it = const_tables[parent_index].begin(); it != const_tables[parent_index].end(); ++it )
+		const_tables[child_index].insert(make_pair(it->first, it->second));
 }
 
 void process_bb_stats_for_tables(int index)
@@ -267,8 +274,8 @@ char * eval_term_id(Term *t)
 {
 	if(t->sign == STAT_SIGN_NEGATIVE)
 	{
-		char * s = (char *)malloc(snprintf(NULL, 0, "%s%s", '-', t->data.var) + 1);
-		sprintf(s, "%s%s", '-', t->data.var);
+		char * s = (char *)malloc(snprintf(NULL, 0, "%s%s", "-", t->data.var) + 1);
+		sprintf(s, "%s%s", "-", t->data.var);
 		return s;
 	}
 
@@ -291,6 +298,7 @@ void process_multi_stat_for_tables(Statement *stat, int table_index)
 	Term *t2 = stat->rhs->t2;
 	RHS *rhs = stat->rhs;
 	Val_obj *lhs_vo = new Val_obj();
+	int changed_check;
 
 	/*Both of the terms are constants, we can do 
 	constant expression evaluation */
@@ -318,7 +326,6 @@ void process_multi_stat_for_tables(Statement *stat, int table_index)
 			/* get t1 constant value number and t2's variable value number */
 			const_val_num = eval_const(eval_term_const(t1), table_index);
 			vo = eval_id(eval_term_id(t2), table_index);
-		
 			/* t2's variable is currently a constant, we can do constant evaluation 
 			   because t1 is a constant */
 			if(vo->is_const)
@@ -326,19 +333,22 @@ void process_multi_stat_for_tables(Statement *stat, int table_index)
 				std::unordered_map<int, int>::const_iterator check = const_table_find(vo->val_num, table_index);
 				
 				/* has not yet been added */
-				if(check == const_tables[table_index]->end())
+				if(check == const_tables[table_index].end())
 				{
 					cout << "process_multi_stat_for_tables if stmt\n";
 					error_unknown(-1); /*this should not happen */
 					return;
 				}
 
+				changed_check = check->first;
+
 				if(t2->sign == STAT_SIGN_NEGATIVE)
 				{
-					check->first = -1*check->first;
+					changed_check = -1*changed_check;
 				}
 
-				int c_v_num = calc_const_and_add_to_table(eval_term_const(t1), rhs->op, check->first, table_index);
+				int c_v_num = calc_const_and_add_to_table(eval_term_const(t1), rhs->op, changed_check, table_index);
+				optimize_stat_with_const(stat, c_v_num, table_index);
 				lhs_vo->is_const = true;
 				lhs_vo->val_num = c_v_num;
 			}
@@ -360,19 +370,22 @@ void process_multi_stat_for_tables(Statement *stat, int table_index)
 				std::unordered_map<int, int>::const_iterator check = const_table_find(vo->val_num, table_index);
 				
 				/* has not yet been added */
-				if(check == const_tables[table_index]->end())
+				if(check == const_tables[table_index].end())
 				{
 					cout << "process_multi_stat_for_tables else if stmt\n";
 					error_unknown(-1); /*this should not happen */
 					return;
 				}
 
+				changed_check = check->first;
+
 				if(t1->sign == STAT_SIGN_NEGATIVE)
 				{
-					check->first = -1*check->first;
+					changed_check = -1*changed_check;
 				}
 
-				int c_v_num = calc_const_and_add_to_table(check->first, rhs->op, eval_term_const(t2), table_index);
+				int c_v_num = calc_const_and_add_to_table(changed_check, rhs->op, eval_term_const(t2), table_index);
+				optimize_stat_with_const(stat, c_v_num, table_index);
 				lhs_vo->is_const = true;
 				lhs_vo->val_num = c_v_num;
 			}
@@ -392,6 +405,7 @@ void process_multi_stat_for_tables(Statement *stat, int table_index)
 		cout << "Grab both ids\n";
 		vo1 = eval_id(eval_term_id(t1), table_index);
 		vo2 = eval_id(eval_term_id(t2), table_index);
+		int changed_check_2;
 
 		/*Both of the variables currently evaluate to constants we can
 		  perform constant eval */
@@ -402,26 +416,33 @@ void process_multi_stat_for_tables(Statement *stat, int table_index)
 			std::unordered_map<int, int>::const_iterator check2 = const_table_find(vo2->val_num, table_index);
 			
 			/* has not yet been added */
-			if(check1 == const_tables[table_index]->end() || check2 == const_tables[table_index]->end())
+			if(check1 == const_tables[table_index].end() || check2 == const_tables[table_index].end())
 			{
 				cout << "process_multi_stat_for_tables else stmt\n";
 				error_unknown(-1); /*this should not happen */
 				return;
 			}
 
+			changed_check = check1->first;
+			changed_check_2 = check2->first;
+
 			if(t1->sign == STAT_SIGN_NEGATIVE)
 			{
-				check1->first = -1*check1->first;
+				changed_check = -1*changed_check;
 			}
 
 			if(t2->sign == STAT_SIGN_NEGATIVE)
 			{
-				check2->first = -1*check2->first;
+				changed_check_2 = -1*changed_check_2;
 			}
 
-			int c_v_num = calc_const_and_add_to_table(check1->first, rhs->op, check2->first, table_index);
+			cout << "term 1 const = " << changed_check << endl;
+			cout << "term 2 const = " << changed_check_2 << endl;
+			int c_v_num = calc_const_and_add_to_table(changed_check, rhs->op, changed_check_2, table_index);
 			lhs_vo->is_const = true;
 			lhs_vo->val_num = c_v_num;
+
+			optimize_stat_with_const(stat, c_v_num, table_index);
 		}
 		/* At least one of the variables is not currently a constant, we must 
 		   add the expression to the table */
@@ -446,7 +467,7 @@ void process_multi_stat_for_tables(Statement *stat, int table_index)
 	/*Finally we add the new value number to our
 	  current lhs id*/
 	string key(stat->lhs);
-	id_tables[table_index]->insert(make_pair(key, lhs_vo));
+	id_tables[table_index].insert(make_pair(key, lhs_vo));
 
 	cout << "Finished processing " << key << endl;
 
@@ -463,6 +484,7 @@ Val_obj* eval_expr(Statement *stat, int table_index)
 	switch(stat->rhs->op)
 	{
 		case STAT_PLUS:
+			cout << "EVAL OF PLUS\n";
 			stat->rhs =  optimize_plus_expr(stat->rhs, table_index);
 			break;
 		case STAT_MINUS:
@@ -518,13 +540,13 @@ Val_obj* eval_expr(Statement *stat, int table_index)
 		}
 
 		/* check to see if the expression already exists */
-		std::unordered_map<string, int>::const_iterator check = expr_tables[table_index]->find (expr_string);
+		std::unordered_map<string, int>::const_iterator check = expr_tables[table_index].find (expr_string);
 
 		/*Expression has not yet been added */
-		if(check == expr_tables[table_index]->end())
+		if(check == expr_tables[table_index].end())
 		{
 			/*introduce a new valnum for the expression and add*/
-			expr_tables[table_index]->insert(make_pair(expr_string,g_val_num));
+			expr_tables[table_index].insert(make_pair(expr_string,g_val_num));
 			lhs_vo->val_num = g_val_num;
 			g_val_num++;
 		}
@@ -545,17 +567,17 @@ Val_obj* eval_expr(Statement *stat, int table_index)
    and adds to table, returns the val_num for const */
 int eval_const(int constant, int table_index)
 {
-    std::unordered_map<int, int>::const_iterator check = const_tables[table_index]->find (constant);
+    std::unordered_map<int, int>::const_iterator check = const_tables[table_index].find (constant);
 
     /*constant has not yet been added 
       therefore we need to introduce a 
       new val_num for this */
-    if(check == const_tables[table_index]->end())
+    if(check == const_tables[table_index].end())
     {
     	int const_val_num = g_val_num;
     	g_val_num++;
 
-    	const_tables[table_index]->insert(make_pair(constant, const_val_num)); /*insert into table */
+    	const_tables[table_index].insert(make_pair(constant, const_val_num)); /*insert into table */
     	
     	return const_val_num; /* return the val_num associated with the constant */
     }
@@ -571,32 +593,37 @@ Val_obj* eval_id(char *var, int table_index)
 	cout << "Evaluating id " << var << endl;
 	string key(var);
 	cout << "Got string " << key << endl;
-    std::unordered_map<string, Val_obj*>::const_iterator check = id_tables[table_index]->find (key);
+    std::unordered_map<string, Val_obj*>::const_iterator check = id_tables[table_index].find(key);
 
     cout << "Performed table find on index " << table_index << endl;
+    
     /*variable has not yet been added 
       therefore we need to introduce a 
       new val_num for this it would not
       be a constant either because it 
       is not in the table yet */
-    if(check == id_tables[table_index]->end())
+    if(check == id_tables[table_index].end())
     {
-    	cout << var << " has not yet been added\n";
+    	cout << "HERE" << endl;
+    	cout << key << " has not yet been added\n";
     	Val_obj *vo = new Val_obj();
     	vo->val_num = g_val_num;
     	vo->is_const = false;
     	cout << "Add " << key << " with valnum " << g_val_num << endl;
-    	id_tables[table_index]->insert(make_pair(key, vo)); /* add new val to the table */
+    	id_tables[table_index].insert(make_pair(key, vo)); /* add new val to the table */
 
     	g_val_num++; /*increase the g_val_num for the next val_num to be used*/
 
     	cout << "Return val_obj\n";
     	return vo;
     }
+    Val_obj *test = new Val_obj();
+    test->is_const = check->second->is_const;
+    test->val_num = check->second->val_num;
 
     cout << "Id already exitsts return " << check->second->val_num;
     /* the id already exisits, return the val_obj associated with it */
-    return check->second;
+    return test;
 }
 
 /* Takes in a term, gets val_num from const table if a const,
@@ -624,7 +651,6 @@ void process_singular_stat_for_tables(Statement *stat, int table_index)
 		and create a Val_obj for the lhs id */
 	if(stat->rhs->t1->type == TERM_TYPE_CONST)
 	{
-		valObj = new Val_obj();
 		valObj->val_num = eval_const(eval_term_const(stat->rhs->t1), table_index);
 		valObj->is_const = true;
 	}
@@ -660,7 +686,7 @@ void process_singular_stat_for_tables(Statement *stat, int table_index)
 	 
 	/*update the lhs id with the rhs valObj*/  	
 	string key(stat->lhs);
-	id_tables[table_index]->insert(make_pair(key, valObj));
+	id_tables[table_index].insert(make_pair(key, valObj));
 }
 
 /* Takes in a statement to be optimized and a val_num associated
@@ -674,14 +700,14 @@ Val_obj* optimize_singl_stat_with_const(Statement *stat, int val_num, int table_
 	vo->is_const = true;
 
 	/*Expression has not yet been added */
-	if(const_it == const_tables[table_index]->end())
+	if(const_it == const_tables[table_index].end())
 	{
 		cout << "optimize_singl_stat_with_const\n";
 		error_unknown(-1); /*this should not happen */
-		return;
+		return NULL;
 	}
 
-	int new_t1  = cons_it->first;
+	int new_t1  = const_it->first;
 
 	if(stat->rhs->t1->sign == STAT_SIGN_NEGATIVE)
 	{
@@ -726,7 +752,7 @@ void optimize_stat_with_const(Statement *stat, int val_num, int table_index)
 	std::unordered_map<int, int>::const_iterator check = const_table_find(val_num, table_index);
 
 	/* has not yet been added */
-	if(check == const_tables[table_index]->end())
+	if(check == const_tables[table_index].end())
 	{
 		cout << "optimize_stat_with_const\n";
 		error_unknown(-1); /*this should not happen */
@@ -736,6 +762,7 @@ void optimize_stat_with_const(Statement *stat, int val_num, int table_index)
 	stat->rhs->t2 = NULL;
 	stat->rhs->op = STAT_NONE;
 	stat->rhs->t1->type = TERM_TYPE_CONST;
+	stat->rhs->t1->sign = STAT_SIGN_POSITIVE;
 	stat->rhs->t1->data.constant = check->first;
 }
 
@@ -786,7 +813,7 @@ int calc_const_and_add_to_table(int const1, int op, int const2, int table_index)
 			evalconst = -1;
 			break;
 	}
-
+	cout << "THIS IS THE EVALED : " << evalconst << endl;
 	/*add or find in const table and return val_num */
 	return eval_const(evalconst, table_index);
 }
@@ -798,7 +825,7 @@ std::vector<string> find_ids_with_same_val_obj(Val_obj *vo, int table_index)
 {
 	std::vector<string> ids;
 
-	for (auto it = id_tables[table_index]->begin(); it != id_tables[table_index]->end(); ++it )
+	for (auto it = id_tables[table_index].begin(); it != id_tables[table_index].end(); ++it )
 	{
 		if(it->second->val_num == vo->val_num)
 		{
@@ -1212,7 +1239,7 @@ bool is_var_and_currently_num(int num_to_compare, Term *t, int table_index)
 																				 table_index);
 
 		/* has not yet been added */
-		if(constant == const_tables[table_index]->end())
+		if(constant == const_tables[table_index].end())
 		{
 			cout << "is_var_and_currently_num\n";
 			error_unknown(-1); /*this should not happen */
@@ -1240,7 +1267,7 @@ int const_val_num_matches(int val_num, int constant, int relop, bool t1_is_const
 	std::unordered_map<int, int>::const_iterator const_it = const_table_find(val_num, table_index);
 
 	/*Expression has not yet been added */
-	if(const_it == const_tables[table_index]->end())
+	if(const_it == const_tables[table_index].end())
 	{
 		cout << "const_val_num_matches\n";
 		error_unknown(-1); /*this should not happen */
@@ -1288,13 +1315,13 @@ bool have_same_val_nums(char *var1, char *var2, int table_index)
 	incoming val_num or the end if not found */
 std::unordered_map<int, int>::const_iterator const_table_find(int val_num, int table_index)
 {
-	for (auto it = const_tables[table_index]->begin(); it != const_tables[table_index]->end(); ++it )
+	for (auto it = const_tables[table_index].begin(); it != const_tables[table_index].end(); ++it )
 	{
 		if(it->second == val_num)
 			return it;
 	}
 
-	return const_tables[table_index]->end();
+	return const_tables[table_index].end();
 }
 
 void process_statement(statement_t *s)

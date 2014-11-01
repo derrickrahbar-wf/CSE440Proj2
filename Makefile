@@ -9,7 +9,7 @@ DIFF = diff
 
 # Flags
 CFLAGS = -g -Wall -c 
-CXXFLAGS = -Wall -D__STDC_LIMIT_MACROS
+CXXFLAGS = -g -Wall -D__STDC_LIMIT_MACROS
 YACCFLAGS = -d -y -v 
 
 CSOURCES = \
