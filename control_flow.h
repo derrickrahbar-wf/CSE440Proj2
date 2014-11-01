@@ -66,7 +66,7 @@ class BasicBlock {
 };
 
 
-
+int eval_term_const(Term *t);
 statement_sequence_t * reverse_ss(statement_sequence_t* ss);
 void print_statement_list(statement_sequence_t* ss);
 std::vector<BasicBlock*> create_CFG(statement_sequence_t *ss);

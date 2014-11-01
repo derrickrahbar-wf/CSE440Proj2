@@ -30,6 +30,7 @@ std::vector<std::unordered_map<string, Val_obj*>*> id_tables;
 std::vector<std::unordered_map<int, int>*> const_tables; /* constant will be first, valnum second */
 
 
+
 statement_sequence_t * reverse_ss(statement_sequence_t* ss)
 {
 	statement_sequence_t *ss_temp1= ss, *ss_previous= NULL;
@@ -262,6 +263,28 @@ void process_statement_for_tables(Statement *stat, int table_index)
 	}
 }
 
+char * eval_term_id(Term *t)
+{
+	if(t->sign == STAT_SIGN_NEGATIVE)
+	{
+		char * s = (char *)malloc(snprintf(NULL, 0, "%s%s", '-', t->data.var) + 1);
+		sprintf(s, "%s%s", '-', t->data.var);
+		return s;
+	}
+
+	return t->data.var;
+}
+
+int eval_term_const(Term *t)
+{
+	if(t->sign == STAT_SIGN_NEGATIVE)
+	{
+		return -1*t->data.constant;
+	}
+
+	return t->data.constant;
+}
+
 void process_multi_stat_for_tables(Statement *stat, int table_index)
 {
 	Term *t1 = stat->rhs->t1;
@@ -274,7 +297,7 @@ void process_multi_stat_for_tables(Statement *stat, int table_index)
 	if(t2->type == TERM_TYPE_CONST && t1->type == TERM_TYPE_CONST)
 	{
 		cout << "Both terms are constants\n";
-		int const_val_num = calc_const_and_add_to_table(t1->data.constant, rhs->op, t2->data.constant, table_index);
+		int const_val_num = calc_const_and_add_to_table(eval_term_const(t1), rhs->op, eval_term_const(t2), table_index);
 		/* update this statement to equal the new evaluated constant*/
 		optimize_stat_with_const(stat, const_val_num, table_index);
 		
@@ -293,8 +316,8 @@ void process_multi_stat_for_tables(Statement *stat, int table_index)
 		{
 			cout << "t1 is the constant\n";
 			/* get t1 constant value number and t2's variable value number */
-			const_val_num = eval_const(t1->data.constant, table_index);
-			vo = eval_id(t2->data.var, table_index);
+			const_val_num = eval_const(eval_term_const(t1), table_index);
+			vo = eval_id(eval_term_id(t2), table_index);
 		
 			/* t2's variable is currently a constant, we can do constant evaluation 
 			   because t1 is a constant */
@@ -310,7 +333,12 @@ void process_multi_stat_for_tables(Statement *stat, int table_index)
 					return;
 				}
 
-				int c_v_num = calc_const_and_add_to_table(t1->data.constant, rhs->op, check->first, table_index);
+				if(t2->sign == STAT_SIGN_NEGATIVE)
+				{
+					check->first = -1*check->first;
+				}
+
+				int c_v_num = calc_const_and_add_to_table(eval_term_const(t1), rhs->op, check->first, table_index);
 				lhs_vo->is_const = true;
 				lhs_vo->val_num = c_v_num;
 			}
@@ -324,8 +352,8 @@ void process_multi_stat_for_tables(Statement *stat, int table_index)
 		else
 		{
 			cout << "t2 is the constant\n";
-			const_val_num = eval_const(t2->data.constant, table_index);
-			vo = eval_id(t1->data.var, table_index);
+			const_val_num = eval_const(eval_term_const(t2), table_index);
+			vo = eval_id(eval_term_id(t1), table_index);
 
 			if(vo->is_const)
 			{
@@ -339,7 +367,12 @@ void process_multi_stat_for_tables(Statement *stat, int table_index)
 					return;
 				}
 
-				int c_v_num = calc_const_and_add_to_table(check->first, rhs->op, t2->data.constant, table_index);
+				if(t1->sign == STAT_SIGN_NEGATIVE)
+				{
+					check->first = -1*check->first;
+				}
+
+				int c_v_num = calc_const_and_add_to_table(check->first, rhs->op, eval_term_const(t2), table_index);
 				lhs_vo->is_const = true;
 				lhs_vo->val_num = c_v_num;
 			}
@@ -357,8 +390,8 @@ void process_multi_stat_for_tables(Statement *stat, int table_index)
 	
 		/* grab the value number for each of the term id's */
 		cout << "Grab both ids\n";
-		vo1 = eval_id(t1->data.var, table_index);
-		vo2 = eval_id(t2->data.var, table_index);
+		vo1 = eval_id(eval_term_id(t1), table_index);
+		vo2 = eval_id(eval_term_id(t2), table_index);
 
 		/*Both of the variables currently evaluate to constants we can
 		  perform constant eval */
@@ -374,6 +407,16 @@ void process_multi_stat_for_tables(Statement *stat, int table_index)
 				cout << "process_multi_stat_for_tables else stmt\n";
 				error_unknown(-1); /*this should not happen */
 				return;
+			}
+
+			if(t1->sign == STAT_SIGN_NEGATIVE)
+			{
+				check1->first = -1*check1->first;
+			}
+
+			if(t2->sign == STAT_SIGN_NEGATIVE)
+			{
+				check2->first = -1*check2->first;
 			}
 
 			int c_v_num = calc_const_and_add_to_table(check1->first, rhs->op, check2->first, table_index);
@@ -450,7 +493,7 @@ Val_obj* eval_expr(Statement *stat, int table_index)
 	/* the rhs was able to be optimized into a constant*/
 	if(stat->rhs->t2 == NULL && stat->rhs->t1->type == TERM_TYPE_CONST)
 	{
-		lhs_vo->val_num = eval_const(stat->rhs->t1->data.constant, table_index);
+		lhs_vo->val_num = eval_const(eval_term_const(stat->rhs->t1), table_index);
 		lhs_vo->is_const = true;
 	}
 	/* rhs is still an expression add to expression table */
@@ -562,11 +605,11 @@ int get_appr_value_num_for_term(Term *t, int table_index)
 {
 	if(t->type == TERM_TYPE_CONST)
 	{
-		return eval_const(t->data.constant, table_index);
+		return eval_const(eval_term_const(t), table_index);
 	}
 	else
 	{
-		return eval_id(t->data.var, table_index)->val_num;
+		return eval_id(eval_term_id(t), table_index)->val_num;
 	}
 }
 
@@ -582,14 +625,14 @@ void process_singular_stat_for_tables(Statement *stat, int table_index)
 	if(stat->rhs->t1->type == TERM_TYPE_CONST)
 	{
 		valObj = new Val_obj();
-		valObj->val_num = eval_const(stat->rhs->t1->data.constant, table_index);
+		valObj->val_num = eval_const(eval_term_const(stat->rhs->t1), table_index);
 		valObj->is_const = true;
 	}
 
 	/* a = b, it is a var add var */ 
 	else
 	{
-		temp_obj = eval_id(stat->rhs->t1->data.var, table_index);
+		temp_obj = eval_id(eval_term_id(stat->rhs->t1), table_index);
 		valObj->val_num = temp_obj->val_num;
 		valObj->is_const = temp_obj->is_const;
 
@@ -598,7 +641,7 @@ void process_singular_stat_for_tables(Statement *stat, int table_index)
 			to be a = #, the actual constant b is */
 		if(valObj->is_const)
 		{
-			optimize_singl_stat_with_const(stat, valObj->val_num, table_index);
+			valObj = optimize_singl_stat_with_const(stat, valObj->val_num, table_index);
 		}
 	}
 	
@@ -623,9 +666,12 @@ void process_singular_stat_for_tables(Statement *stat, int table_index)
 /* Takes in a statement to be optimized and a val_num associated
 	with that constant, gets the constants value and updates
 	the statement */
-void optimize_singl_stat_with_const(Statement *stat, int val_num, int table_index)
+Val_obj* optimize_singl_stat_with_const(Statement *stat, int val_num, int table_index)
 {
 	std::unordered_map<int, int>::const_iterator const_it = const_table_find(val_num, table_index);
+
+	Val_obj *vo = new Val_obj();
+	vo->is_const = true;
 
 	/*Expression has not yet been added */
 	if(const_it == const_tables[table_index]->end())
@@ -635,11 +681,22 @@ void optimize_singl_stat_with_const(Statement *stat, int val_num, int table_inde
 		return;
 	}
 
+	int new_t1  = cons_it->first;
+
+	if(stat->rhs->t1->sign == STAT_SIGN_NEGATIVE)
+	{
+		new_t1 = -1*new_t1;
+		vo->val_num = eval_const(new_t1, table_index);
+	}
+
 	/*update state to equal just the constant */
 	stat->rhs->t1->type = TERM_TYPE_CONST;
-	stat->rhs->t1->data.constant = 	const_it->first;
+	stat->rhs->t1->sign = STAT_SIGN_POSITIVE;
+	stat->rhs->t1->data.constant = 	new_t1;
 	stat->rhs->t2 = NULL;
 	stat->rhs->op = STAT_NONE;
+
+	return vo;
 }
 
 void find_stat_and_add_to_remove_list(Statement* stat, int table_index)
@@ -837,7 +894,7 @@ RHS * optimize_plus_expr(RHS *rhs, int table_index)
 	   t1 and t2 must both be vars and have 
 	   the same value num */
 	else if(rhs->t1->type == TERM_TYPE_VAR && rhs->t2->type == TERM_TYPE_VAR
-		&& have_same_val_nums(rhs->t1->data.var, rhs->t2->data.var, table_index))
+		&& have_same_val_nums(eval_term_id(rhs->t1), eval_term_id(rhs->t2), table_index))
 	{
 		/*preserve value of t2 and replace t1 with constant of 2
 		  update the operation to be multiplication */
@@ -879,7 +936,7 @@ RHS * optimize_minus_expr(RHS *rhs, int table_index)
 	/* a = b - b --> a = 0
 	   t1 and t2 must be vars and have same val nums */
 	else if(rhs->t1->type == TERM_TYPE_VAR && rhs->t2->type == TERM_TYPE_VAR
-		&& have_same_val_nums(rhs->t1->data.var, rhs->t2->data.var, table_index))
+		&& have_same_val_nums(eval_term_id(rhs->t1), eval_term_id(rhs->t2), table_index))
 	{
 		rhs->t2 = NULL;
 		rhs->op = STAT_NONE;
@@ -970,7 +1027,7 @@ RHS * optimize_slash_expr(RHS *rhs, int table_index)
 	/* a = b/b --> a = 1
 	   t1 and t2 must both have same val numbers */
 	else if(rhs->t1->type == TERM_TYPE_VAR && rhs->t2->type == TERM_TYPE_VAR
-		&& have_same_val_nums(rhs->t1->data.var, rhs->t2->data.var, table_index))
+		&& have_same_val_nums(eval_term_id(rhs->t1), eval_term_id(rhs->t2), table_index))
 	{
 		rhs->t2 = NULL;
 		rhs->op = STAT_NONE;
@@ -1023,7 +1080,7 @@ RHS * optimize_mod_expr(RHS *rhs, int table_index)
 	/* a = b % b --> a = 0 
 	   t1 and t2 must have same val nums */
 	else if(rhs->t1->type == TERM_TYPE_VAR && rhs->t2->type == TERM_TYPE_VAR
-		&& have_same_val_nums(rhs->t1->data.var, rhs->t2->data.var, table_index))
+		&& have_same_val_nums(eval_term_id(rhs->t1), eval_term_id(rhs->t2), table_index))
 	{
 		rhs->t2 = NULL;
 		rhs->op = STAT_NONE;
@@ -1042,7 +1099,7 @@ RHS * optimize_e_le_ge_expr(RHS *rhs, int table_index)
 	/* b == b, b >= b, b <= b, replace with 1 for true 
 	   t1 and t2 must both be vars with same val nums */
 	if(rhs->t1->type == TERM_TYPE_VAR && rhs->t2->type == TERM_TYPE_VAR
-		&& have_same_val_nums(rhs->t1->data.var, rhs->t2->data.var, table_index))
+		&& have_same_val_nums(eval_term_id(rhs->t1), eval_term_id(rhs->t2), table_index))
 	{
 		rhs->t2 = NULL;
 		rhs->op = STAT_NONE;
@@ -1052,9 +1109,9 @@ RHS * optimize_e_le_ge_expr(RHS *rhs, int table_index)
 
 	/* if t1 is a constant and t2 is currently eval 
 	 	to a constant */
-	else if(rhs->t1->type == TERM_TYPE_CONST && is_current_constant(rhs->t2->data.var, table_index))
+	else if(rhs->t1->type == TERM_TYPE_CONST && is_current_constant(eval_term_id(rhs->t2), table_index))
 	{
-		int new_t1 = const_val_num_matches(eval_id(rhs->t2->data.var, table_index)->val_num, 
+		int new_t1 = const_val_num_matches(eval_id(eval_term_id(rhs->t2), table_index)->val_num, 
 										   rhs->t1->data.constant, rhs->op, true, table_index);
 		/* set t1 to whether or not they are true */
 		rhs->t1->type = TERM_TYPE_CONST;
@@ -1065,9 +1122,9 @@ RHS * optimize_e_le_ge_expr(RHS *rhs, int table_index)
 
 	/* if t2 is a constant and t1 is currently eval 
  	to a constant */
-	else if(rhs->t2->type == TERM_TYPE_CONST && is_current_constant(rhs->t1->data.var, table_index))
+	else if(rhs->t2->type == TERM_TYPE_CONST && is_current_constant(eval_term_id(rhs->t1), table_index))
 	{
-		int new_t1 = const_val_num_matches(eval_id(rhs->t1->data.var, table_index)->val_num, 
+		int new_t1 = const_val_num_matches(eval_id(eval_term_id(rhs->t1), table_index)->val_num, 
 										   rhs->t2->data.constant, rhs->op, false, table_index);
 		/* set t1 to whether or not they are true */
 		rhs->t1->type = TERM_TYPE_CONST;
@@ -1087,7 +1144,7 @@ RHS * optimize_ne_gt_lt_exprs(RHS *rhs, int table_index)
 	/* b != b, b > b, b < b, replace with 0 for false 
 	   t1 and t2 must both be vars with same val nums */
 	if(rhs->t1->type == TERM_TYPE_VAR && rhs->t2->type == TERM_TYPE_VAR
-		&& have_same_val_nums(rhs->t1->data.var, rhs->t2->data.var, table_index))
+		&& have_same_val_nums(eval_term_id(rhs->t1), eval_term_id(rhs->t2), table_index))
 	{
 		rhs->t2 = NULL;
 		rhs->op = STAT_NONE;
@@ -1097,9 +1154,9 @@ RHS * optimize_ne_gt_lt_exprs(RHS *rhs, int table_index)
 
 	/* if t1 is a constant and t2 is currently eval 
  	to a constant */
-	else if(rhs->t1->type == TERM_TYPE_CONST && is_current_constant(rhs->t2->data.var, table_index))
+	else if(rhs->t1->type == TERM_TYPE_CONST && is_current_constant(eval_term_id(rhs->t2), table_index))
 	{
-		int new_t1 = const_val_num_matches(eval_id(rhs->t2->data.var, table_index)->val_num, 
+		int new_t1 = const_val_num_matches(eval_id(eval_term_id(rhs->t2), table_index)->val_num, 
 										   rhs->t1->data.constant, rhs->op, true, table_index);
 		/* set t1 to whether or not they are true */
 		rhs->t1->type = TERM_TYPE_CONST;
@@ -1110,9 +1167,9 @@ RHS * optimize_ne_gt_lt_exprs(RHS *rhs, int table_index)
 
 	/* if t2 is a constant and t1 is currently eval 
  	to a constant */
-	else if(rhs->t2->type == TERM_TYPE_CONST && is_current_constant(rhs->t1->data.var, table_index))
+	else if(rhs->t2->type == TERM_TYPE_CONST && is_current_constant(eval_term_id(rhs->t1), table_index))
 	{
-		int new_t1 = const_val_num_matches(eval_id(rhs->t1->data.var, table_index)->val_num, 
+		int new_t1 = const_val_num_matches(eval_id(eval_term_id(rhs->t1), table_index)->val_num, 
 										   rhs->t2->data.constant, rhs->op, false, table_index);
 		/* set t1 to whether or not they are true */
 		rhs->t1->type = TERM_TYPE_CONST;
@@ -1147,7 +1204,7 @@ bool is_var_and_currently_num(int num_to_compare, Term *t, int table_index)
 		return false; /* not a var */
 	}
 
-	Val_obj *id_obj = eval_id(t->data.var, table_index);
+	Val_obj *id_obj = eval_id(eval_term_id(t), table_index);
 
 	if(id_obj->is_const)
 	{
