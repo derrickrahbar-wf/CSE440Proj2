@@ -60,9 +60,8 @@ std::vector<BasicBlock*> create_CFG(statement_sequence_t *ss)
 	BasicBlock *starting_block = new BasicBlock();
 	cfg.push_back(starting_block);
 	add_statements_to_cfg(ss);
-	print_CFG();
 	remove_dummy_nodes();
-	//define_extended_bbs();
+	define_extended_bbs();
 	print_CFG();
 
 	// value_numbering();

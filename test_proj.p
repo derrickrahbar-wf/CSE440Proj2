@@ -21,9 +21,9 @@ BEGIN
             dd := aa + dd
             END
     ELSE
-        aa := 0;
+        aa := 0
 
-    bb := bb +1
+
 END
 
 END
