@@ -7,6 +7,7 @@ extern "C"
 	#include "error.h"
 }
 #include "control_flow.h"
+#include "free_mem.h"
 #include <sstream>
 #include <iostream>
 #include <algorithm>
@@ -56,20 +57,20 @@ void print_statement_list(statement_sequence_t* ss)
 	}
 }
 
-std::vector<BasicBlock*> create_CFG(statement_sequence_t *ss)
+std::vector<BasicBlock*> create_CFG(statement_sequence_t *ss, program_t *program)
 {
 	BasicBlock *starting_block = new BasicBlock();
 	cfg.push_back(starting_block);
 	add_statements_to_cfg(ss);
+	remove_program_tree(program);
 	remove_dummy_nodes();
 	define_extended_bbs();
-	cout << "ENTERING VAL NUM" << endl;
-	//print_CFG();
-	cout << "ENTERING VAL NUM" << endl;
+	print_CFG();
+	cout << "\nENTERING VAL NUM" << endl;
 
 	value_numbering();
 
-
+	cout << endl;
 	return cfg;
 }
 
@@ -190,7 +191,7 @@ void value_numbering()
 
 	cout << "\n\n====================================================\n\n";
 	cout << "AFTER VALUE NUMBERING\n";
-	//print_CFG();
+	print_CFG();
 }
 
 void create_tables_for_bb(int cfg_index)
@@ -237,13 +238,9 @@ void process_bb_stats_for_tables(int index)
 	cout << "Processing bb " << index << endl;
 
 	for(int i = 0; i < bb->statements.size(); i++)
-	{	
-		if(!bb->statements[i]->is_goto)
-		{
-			cout << "Processing statement " << i << " in bb "<< index << endl;
-			process_statement_for_tables(bb->statements[i], index);
-		}
-		
+	{
+		cout << "Processing statement " << i << " in bb "<< index << endl;
+		process_statement_for_tables(bb->statements[i], index);
 	}
 
 	/*We have processed all statements for this current 
@@ -1311,17 +1308,7 @@ bool have_same_val_nums(char *var1, char *var2, int table_index)
 	return eval_id(var1, table_index)->val_num == eval_id(var2, table_index)->val_num;
 }
 
-void add_goto_statement(int current_index, int goto_index, char *if_var)
-{
-	Statement* st = new Statement();
-	st->is_goto = true;
-	st->goto_index = goto_index;
-	if(if_var != NULL)
-	{
-		st->lhs = if_var;
-	}	
-	cfg[current_index]->statements.push_back(st);
-}
+
 
 /* Finds the entry in the constant table that corresponds to the 
 	incoming val_num or the end if not found */
@@ -1382,15 +1369,11 @@ void add_while_statement_to_cfg(while_statement_t *ws)
 	cfg[condition_index]->parents.push_back(current_bb);
 	cfg[current_bb]->children.push_back(condition_index);
 
-	/*add goto statement at end of current block to go to condition node of ws*/
-	// add_goto_statement(current_bb, condition_index, NULL);
-
 	parent.clear();
 
 	/* Create BB that joins final BB of ws body and ws condition */
 	parent.push_back(condition_index);
 	add_next_bb(parent);
-
 }
 
 void add_statements_to_cfg(statement_sequence_t *ss)
@@ -1403,6 +1386,7 @@ void add_statements_to_cfg(statement_sequence_t *ss)
 		ss = ss->next;
 	}
 }
+
 
 void add_assignment_to_cfg(assignment_statement_t *as)
 {
@@ -1426,9 +1410,6 @@ void add_if_statement_to_cfg(if_statement_t *ifs)
 	/* same logic as above for the else stmt */
 	int if_st2_index = add_if_body_to_cfg(ifs->s2, parent);
 	int end_st2_index = current_bb;
-
-	/*Add else go to from the condition node to start of else bb's*/
-	// add_goto_statement(parent, if_st2_index, NULL);
 	
 	cfg[parent]->children.push_back(if_st1_index);
 	cfg[parent]->children.push_back(if_st2_index);
@@ -1450,9 +1431,6 @@ void add_condition_to_bb(expression_t *expr)
 	stat->rhs = rhs;
 
 	cfg[current_bb]->statements.push_back(stat);
-
-	/* add goto statement to be the next bb */
-	// add_goto_statement(current_bb, current_bb+1, stat->lhs);
 }
 
 RHS* get_rhs_from_expr(expression_t *expr)
@@ -2061,108 +2039,97 @@ void print_CFG()
 		for(int k=0 ; k< cfg[i]->statements.size(); k++)
 		{
 			Statement *stmt = cfg[i]->statements[k];
-			if(stmt->is_goto)
+			string op;
+			switch(stmt->rhs->op)
 			{
-				if(stmt->lhs != NULL)
-				{
-					cout << "if " << stmt->lhs;
-				}
-				cout << " GOTO: " << stmt->goto_index << endl;
+				case STAT_PLUS :
+					op = "+";
+					break;
+				case STAT_MINUS:
+					op = "-";
+					break;
+				case STAT_STAR:
+					op = "*";
+					break;
+				case STAT_SLASH: 
+					op = "/";
+					break;
+				case STAT_MOD:
+					op = "\%";
+					break;
+				case STAT_EQUAL:
+					op = "==";
+					break;
+				case STAT_NOTEQUAL:
+					op = "!=";
+					break;
+				case STAT_LT: 
+					op = "<";
+					break;
+				case STAT_GT: 
+					op = ">";
+					break;
+				case STAT_LE:
+					op = "<=";
+					break;
+				case STAT_GE :
+					op = ">=";
+					break;
+				case STAT_NONE:
+					op = "----";
+					break;
+			}
+			char *t1, *t2;
+			string str;
+			if(stmt->rhs->t1->type == TERM_TYPE_CONST)
+			{
+				stringstream ss;
+				ss << stmt->rhs->t1->data.constant;
+				str = ss.str();
+				t1 = new char [str.length()+1];
+				strcpy(t1, str.c_str());
 			}
 			else
 			{
-				string op;
-				switch(stmt->rhs->op)
-				{
-					case STAT_PLUS :
-						op = "+";
-						break;
-					case STAT_MINUS:
-						op = "-";
-						break;
-					case STAT_STAR:
-						op = "*";
-						break;
-					case STAT_SLASH: 
-						op = "/";
-						break;
-					case STAT_MOD:
-						op = "\%";
-						break;
-					case STAT_EQUAL:
-						op = "==";
-						break;
-					case STAT_NOTEQUAL:
-						op = "!=";
-						break;
-					case STAT_LT: 
-						op = "<";
-						break;
-					case STAT_GT: 
-						op = ">";
-						break;
-					case STAT_LE:
-						op = "<=";
-						break;
-					case STAT_GE :
-						op = ">=";
-						break;
-					case STAT_NONE:
-						op = "----";
-						break;
-				}
-				char *t1, *t2;
-				string str;
-				if(stmt->rhs->t1->type == TERM_TYPE_CONST)
+				t1 = stmt->rhs->t1->data.var;
+			}
+
+			if(stmt->rhs->t2 != NULL)
+			{
+				if(stmt->rhs->t2->type == TERM_TYPE_CONST)
 				{
 					stringstream ss;
-					ss << stmt->rhs->t1->data.constant;
+					ss << stmt->rhs->t2->data.constant;
 					str = ss.str();
-					t1 = new char [str.length()+1];
-					strcpy(t1, str.c_str());
+					t2 = new char [str.length()+1];
+					strcpy(t2, str.c_str());
 				}
 				else
 				{
-					t1 = stmt->rhs->t1->data.var;
+					t2 = stmt->rhs->t2->data.var;
 				}
+			}
 
-				if(stmt->rhs->t2 != NULL)
-				{
-					if(stmt->rhs->t2->type == TERM_TYPE_CONST)
-					{
-						stringstream ss;
-						ss << stmt->rhs->t2->data.constant;
-						str = ss.str();
-						t2 = new char [str.length()+1];
-						strcpy(t2, str.c_str());
-					}
-					else
-					{
-						t2 = stmt->rhs->t2->data.var;
-					}
-				}
+			printf("\tASSIGNMENT: ");
+			
+			printf("%s = ", stmt->lhs);
+			if(stmt->rhs->t1->sign == STAT_SIGN_NEGATIVE)
+			{
+				printf("-");
+			}
+			printf("%s", t1);
 
-				printf("\tASSIGNMENT: ");
-				
-				printf("%s = ", stmt->lhs);
-				if(stmt->rhs->t1->sign == STAT_SIGN_NEGATIVE)
+			if(stmt->rhs->t2 != NULL)
+			{
+				printf(" %s ", op.c_str());
+				if(stmt->rhs->t2->sign == STAT_SIGN_NEGATIVE)
 				{
 					printf("-");
 				}
-				printf("%s", t1);
-
-				if(stmt->rhs->t2 != NULL)
-				{
-					printf(" %s ", op.c_str());
-					if(stmt->rhs->t2->sign == STAT_SIGN_NEGATIVE)
-					{
-						printf("-");
-					}
-					printf("%s", t2);
-				}
-				cout << endl;
-				
+				printf("%s", t2);
 			}
+			cout << endl;
+			
 		}
 
 		printf("-------------------------------------------------------------");

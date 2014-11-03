@@ -118,7 +118,7 @@ int main(int argc, char **argv)
   /* If there were parsing errors, exit. */
   exit_on_errors();
 
-  create_CFG(program->cl->cb->fdl->fd->fb->ss);
+  create_CFG(program->cl->cb->fdl->fd->fb->ss, program);
 
   /* If there were errors during semantic analysis, exit. */
   exit_on_errors();

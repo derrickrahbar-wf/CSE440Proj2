@@ -4,9 +4,18 @@ class tes
 BEGIN   
 FUNCTION tes(ff : integer): integer;
 BEGIN
+    WHILE testing > 1 DO
+    BEGIN
     gg := 10;
     aa := 1;
     bb := 10;
+    if aa > 4 THEN
+        BEGIN
+            aa := bb + 10;
+            tt := gg
+        END
+        ELSE
+            tt := 1;
     xx := 14;
     pp := xx + gg;
     happy := kk - kk;
@@ -24,6 +33,7 @@ BEGIN
 	aa := ff + cc;
     ggas := 123;
     bb := ff + cc 
+    END
 END
 
 END

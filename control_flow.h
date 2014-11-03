@@ -35,6 +35,12 @@ class Term {
 			int constant;
 			char *var;
 		}data;
+
+		~Term()
+		{
+			delete[] data.var;
+			cout <<"\n\n TERM DESTRUCTOR CALLED \n\n";
+		}
 };
 
 
@@ -43,20 +49,35 @@ class RHS {
 		Term *t1;
 		int op;
 		Term *t2;
+
+		~RHS()
+		{
+			delete t1;
+			delete t2;
+			cout <<"\n\n RHS DESTRUCTOR CALLED \n\n";
+		}
 };
 
 class Val_obj {
 	public:
 		int val_num;
 		bool is_const;
+	~Val_obj(){
+		cout <<"\n\n Val_obj DESTRUCTOR CALLED \n\n";
+	}
 };
 
 class Statement {
 	public:
 		char *lhs;
 		RHS *rhs;
-		bool is_goto;
-		int goto_index;
+
+	~Statement()
+	{
+		delete[] lhs;
+		delete rhs;
+		cout <<"\n\n Statement DESTRUCTOR CALLED \n\n";
+	}
 };
 
 class BasicBlock {
@@ -65,13 +86,19 @@ class BasicBlock {
 		std::vector<int> children;
 		std::vector<Statement*> statements;
 		int extended_bb; //ranged from 1-n 
+
+	~BasicBlock()
+	{
+		cout <<"\n\n BasicBlock DESTRUCTOR CALLED \n\n";
+		statements.clear();
+	}
 };
 
 
 int eval_term_const(Term *t);
 statement_sequence_t * reverse_ss(statement_sequence_t* ss);
 void print_statement_list(statement_sequence_t* ss);
-std::vector<BasicBlock*> create_CFG(statement_sequence_t *ss);
+std::vector<BasicBlock*> create_CFG(statement_sequence_t *ss, program_t *program);
 void value_numbering();
 void create_tables_for_bb(int cfg_index);
 void copy_parent_tables_to_child(int parent_index, int child_index);

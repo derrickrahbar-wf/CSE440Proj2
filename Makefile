@@ -23,7 +23,9 @@ CSOURCES = \
 
 CXXSOURCES = \
 	main.cpp \
-	control_flow.cpp 
+	control_flow.cpp \
+	free_mem.cpp \
+
 
 
 

@@ -1,5 +1,20 @@
-void symtab_init();
-void symtab_print(int numOfTabs);
+/* symtab.h
+ *
+ * Holds function definitions for the symbol table. The symbol table
+ * is implemented as a global hash table that contains local symbol
+ * tables for each function
+ */
+
+#ifndef FREE_MEM_H
+#define FREE_MEM_H
+
+
+/* ----------------------------------------------------------------
+ * Function declarations
+ * ----------------------------------------------------------------
+ */
+
+
 void remove_program_tree(struct program_t *program);
 void remove_program_heading(struct program_heading_t *ph);
 void remove_class_list(struct class_list_t *cl);
@@ -43,3 +58,10 @@ void remove_identifier_list(struct identifier_list_t *idl);
 void remove_class_identification(struct class_identification_t *ci);
 void remove_class_block(struct class_block_t *cb);
 void remove_function_declaration_list(struct func_declaration_list_t *fdl);
+
+
+
+/* ONES NOT PICKED UP */
+void remove_formal_param_sec(struct formal_parameter_section_t *fps);
+
+#endif

@@ -1,4 +1,4 @@
-with open("control_flow.cpp", "r") as file:
+with open("symtab.c", "r") as file:
 	data = file.readlines()
 
 b = []
