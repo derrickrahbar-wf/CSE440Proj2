@@ -257,7 +257,7 @@ void process_bb_stats_for_tables(int index)
 	for(int i = 0; i < bb->statements.size(); i++)
 	{
 		cout << "Processing statement " << i << " in bb "<< index << endl;
-		if(!bb->statments[i]->is_goto)
+		if(!bb->statements[i]->is_goto)
 		{
 			process_statement_for_tables(bb->statements[i], index);
 		}
