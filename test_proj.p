@@ -9,16 +9,18 @@ BEGIN
     bb := 10;
     xx := 14;
     pp := xx + gg;
-    happy := aa + 3;
+    happy := kk - kk;
     ll := 19;
     auk := 12;
     ll := 19;
-    aduk := 12;
+    while aduk = 12 DO
+    BEGIN
     if aa > bb THEN
         bb := ad
     ELSE
         dd := cc;
-    asdll := 19;
+    asdll := 19
+    END;
 	aa := ff + cc;
     ggas := 123;
     bb := ff + cc 
