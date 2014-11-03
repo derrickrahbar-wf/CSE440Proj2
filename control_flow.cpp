@@ -48,6 +48,18 @@ statement_sequence_t * reverse_ss(statement_sequence_t* ss)
 	return ss;
 }
 
+void add_goto_statement(int current_index, int goto_index, char *if_var)
+{
+	Statement* st = new Statement();
+	st->is_goto = true;
+	st->goto_index = goto_index;
+	if(if_var != NULL)
+	{
+		st->lhs = if_var;
+	}	
+	cfg[current_index]->statements.push_back(st);
+}
+
 void print_statement_list(statement_sequence_t* ss)
 {
 	while(ss != NULL)
@@ -211,6 +223,11 @@ void create_tables_for_bb(int cfg_index)
 	}
 
 	process_bb_stats_for_tables(cfg_index);
+
+	if(bb->children.size() == 0)
+	{
+		id_tables[cfg_index].clear();	
+	}
 }
 
 void copy_parent_tables_to_child(int parent_index, int child_index)
@@ -1371,9 +1388,13 @@ void add_while_statement_to_cfg(while_statement_t *ws)
 
 	parent.clear();
 
+	/*add goto statement at end of condition to go to node after ws*/
+	add_goto_statement(condition_index, current_bb+1, NULL);
+
 	/* Create BB that joins final BB of ws body and ws condition */
 	parent.push_back(condition_index);
 	add_next_bb(parent);
+
 }
 
 void add_statements_to_cfg(statement_sequence_t *ss)
@@ -1410,6 +1431,9 @@ void add_if_statement_to_cfg(if_statement_t *ifs)
 	/* same logic as above for the else stmt */
 	int if_st2_index = add_if_body_to_cfg(ifs->s2, parent);
 	int end_st2_index = current_bb;
+
+	/*Add else go to from the condition node to start of else bb's*/
+	add_goto_statement(parent, if_st2_index, NULL);
 	
 	cfg[parent]->children.push_back(if_st1_index);
 	cfg[parent]->children.push_back(if_st2_index);
@@ -1431,6 +1455,8 @@ void add_condition_to_bb(expression_t *expr)
 	stat->rhs = rhs;
 
 	cfg[current_bb]->statements.push_back(stat);
+	/* add goto statement to be the next bb */
+	add_goto_statement(current_bb, current_bb+1, stat->lhs);
 }
 
 RHS* get_rhs_from_expr(expression_t *expr)
@@ -2039,97 +2065,108 @@ void print_CFG()
 		for(int k=0 ; k< cfg[i]->statements.size(); k++)
 		{
 			Statement *stmt = cfg[i]->statements[k];
-			string op;
-			switch(stmt->rhs->op)
+			if(stmt->is_goto)
 			{
-				case STAT_PLUS :
-					op = "+";
-					break;
-				case STAT_MINUS:
-					op = "-";
-					break;
-				case STAT_STAR:
-					op = "*";
-					break;
-				case STAT_SLASH: 
-					op = "/";
-					break;
-				case STAT_MOD:
-					op = "\%";
-					break;
-				case STAT_EQUAL:
-					op = "==";
-					break;
-				case STAT_NOTEQUAL:
-					op = "!=";
-					break;
-				case STAT_LT: 
-					op = "<";
-					break;
-				case STAT_GT: 
-					op = ">";
-					break;
-				case STAT_LE:
-					op = "<=";
-					break;
-				case STAT_GE :
-					op = ">=";
-					break;
-				case STAT_NONE:
-					op = "----";
-					break;
-			}
-			char *t1, *t2;
-			string str;
-			if(stmt->rhs->t1->type == TERM_TYPE_CONST)
-			{
-				stringstream ss;
-				ss << stmt->rhs->t1->data.constant;
-				str = ss.str();
-				t1 = new char [str.length()+1];
-				strcpy(t1, str.c_str());
+				if(stmt->lhs)
+				{
+					cout << "IF " << stmt->lhs << " ";
+				}
+				cout << "GO TO: " << stmt->goto_index<< endl;
 			}
 			else
 			{
-				t1 = stmt->rhs->t1->data.var;
-			}
-
-			if(stmt->rhs->t2 != NULL)
-			{
-				if(stmt->rhs->t2->type == TERM_TYPE_CONST)
+				string op;
+				switch(stmt->rhs->op)
+				{
+					case STAT_PLUS :
+						op = "+";
+						break;
+					case STAT_MINUS:
+						op = "-";
+						break;
+					case STAT_STAR:
+						op = "*";
+						break;
+					case STAT_SLASH: 
+						op = "/";
+						break;
+					case STAT_MOD:
+						op = "\%";
+						break;
+					case STAT_EQUAL:
+						op = "==";
+						break;
+					case STAT_NOTEQUAL:
+						op = "!=";
+						break;
+					case STAT_LT: 
+						op = "<";
+						break;
+					case STAT_GT: 
+						op = ">";
+						break;
+					case STAT_LE:
+						op = "<=";
+						break;
+					case STAT_GE :
+						op = ">=";
+						break;
+					case STAT_NONE:
+						op = "----";
+						break;
+				}
+				char *t1, *t2;
+				string str;
+				if(stmt->rhs->t1->type == TERM_TYPE_CONST)
 				{
 					stringstream ss;
-					ss << stmt->rhs->t2->data.constant;
+					ss << stmt->rhs->t1->data.constant;
 					str = ss.str();
-					t2 = new char [str.length()+1];
-					strcpy(t2, str.c_str());
+					t1 = new char [str.length()+1];
+					strcpy(t1, str.c_str());
 				}
 				else
 				{
-					t2 = stmt->rhs->t2->data.var;
+					t1 = stmt->rhs->t1->data.var;
 				}
-			}
 
-			printf("\tASSIGNMENT: ");
-			
-			printf("%s = ", stmt->lhs);
-			if(stmt->rhs->t1->sign == STAT_SIGN_NEGATIVE)
-			{
-				printf("-");
-			}
-			printf("%s", t1);
+				if(stmt->rhs->t2 != NULL)
+				{
+					if(stmt->rhs->t2->type == TERM_TYPE_CONST)
+					{
+						stringstream ss;
+						ss << stmt->rhs->t2->data.constant;
+						str = ss.str();
+						t2 = new char [str.length()+1];
+						strcpy(t2, str.c_str());
+					}
+					else
+					{
+						t2 = stmt->rhs->t2->data.var;
+					}
+				}
 
-			if(stmt->rhs->t2 != NULL)
-			{
-				printf(" %s ", op.c_str());
-				if(stmt->rhs->t2->sign == STAT_SIGN_NEGATIVE)
+				printf("\tASSIGNMENT: ");
+				
+				printf("%s = ", stmt->lhs);
+				if(stmt->rhs->t1->sign == STAT_SIGN_NEGATIVE)
 				{
 					printf("-");
 				}
-				printf("%s", t2);
+				printf("%s", t1);
+
+				if(stmt->rhs->t2 != NULL)
+				{
+					printf(" %s ", op.c_str());
+					if(stmt->rhs->t2->sign == STAT_SIGN_NEGATIVE)
+					{
+						printf("-");
+					}
+					printf("%s", t2);
+				}
+				cout << endl;
 			}
-			cout << endl;
-			
+				
 		}
 
 		printf("-------------------------------------------------------------");

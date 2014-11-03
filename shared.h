@@ -477,7 +477,7 @@ struct program_t {
  * ----------------------------------------------------------------
  */
 int makekey(char* lexeme, int max_hashkeys);
-char * tolower(char *s);
+char * tolowerr(char *s);
 void print_tabs(int numOfTabs);
 char *inttostring(int value);
 char *longtostring(long value);

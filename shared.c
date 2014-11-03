@@ -47,7 +47,7 @@ int makekey(char* lexeme, int max_hashkeys)
  * Converts a string to lowercase
  * ----------------------------------------------------------------------- 
  */
-char * tolower(char *s)
+char * tolowerr(char *s)
 {
   int len;
   int i;

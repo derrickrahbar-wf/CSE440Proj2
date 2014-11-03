@@ -71,6 +71,8 @@ class Statement {
 	public:
 		char *lhs;
 		RHS *rhs;
+		bool is_goto;
+		int goto_index;
 
 	~Statement()
 	{
