@@ -257,7 +257,10 @@ void process_bb_stats_for_tables(int index)
 	for(int i = 0; i < bb->statements.size(); i++)
 	{
 		cout << "Processing statement " << i << " in bb "<< index << endl;
-		process_statement_for_tables(bb->statements[i], index);
+		if(!bb->statments[i]->is_goto)
+		{
+			process_statement_for_tables(bb->statements[i], index);
+		}
 	}
 
 	/*We have processed all statements for this current 
@@ -2067,6 +2070,7 @@ void print_CFG()
 			Statement *stmt = cfg[i]->statements[k];
 			if(stmt->is_goto)
 			{
+				cout << "\t";
 				if(stmt->lhs)
 				{
 					cout << "IF " << stmt->lhs << " ";

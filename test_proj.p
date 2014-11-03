@@ -7,6 +7,7 @@ BEGIN
     WHILE testing > 1 DO
     BEGIN
     gg := 10;
+    gg := 10;
     aa := 1;
     bb := 10;
     if aa > 4 THEN
